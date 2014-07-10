@@ -1,0 +1,13 @@
+cscope.*
+.classpath
+.project
+.svn
+target/
+/recipes/rabbitmq-consumer-group/target/
+.idea
+*.iml
+.settings/
+out/
+.DS_Store
+#this directory will be part of release process 
+helix-dev-release/
