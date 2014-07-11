@@ -140,7 +140,7 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
         }
 
         // Check
-        Thread.sleep(500);
+        Thread.sleep(1000);
         for (String partitionName : secondPartitions) {
             AtomicInteger count = secondCounts.get(partitionName + ":ONLINE");
             Assert.assertNotNull(count);

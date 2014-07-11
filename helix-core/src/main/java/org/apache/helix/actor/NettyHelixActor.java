@@ -18,6 +18,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -39,7 +40,8 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
     private final AtomicBoolean isShutdown;
     private final ConcurrentMap<String, HelixActorCallback<T>> callbacks;
-    private final ConcurrentMap<String, InetSocketAddress> ipcAddresses;
+    private final Map<String, InetSocketAddress> ipcAddresses;
+    private final Map<InetSocketAddress, Channel> channels;
     private final HelixManager manager;
     private final int port;
     private final HelixActorMessageCodec<T> codec;
@@ -59,7 +61,8 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     public NettyHelixActor(HelixManager manager, int port, HelixActorMessageCodec<T> codec) {
         this.isShutdown = new AtomicBoolean(true);
         this.callbacks = new ConcurrentHashMap<String, HelixActorCallback<T>>();
-        this.ipcAddresses = new ConcurrentHashMap<String, InetSocketAddress>();
+        this.ipcAddresses = new HashMap<String, InetSocketAddress>();
+        this.channels = new HashMap<InetSocketAddress, Channel>();
         this.manager = manager;
         this.port = port;
         this.codec = codec;
@@ -151,12 +154,26 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                 this.codec.encode(message));
 
         // Send message(s)
-        for (final InetSocketAddress address : addresses) {
-            try {
-                Channel channel = clientBootstrap.connect(address).sync().channel();
-                channel.writeAndFlush(byteBuf).addListener(ChannelFutureListener.CLOSE);
-            } catch (InterruptedException e) {
-                throw new IllegalStateException("Could not send message to " + partition + ":" + state, e);
+        synchronized (channels) {
+            for (final InetSocketAddress address : addresses) {
+                try {
+                    Channel channel = channels.get(address);
+                    if (channel == null || !channel.isOpen()) {
+                        channel = clientBootstrap.connect(address).sync().channel();
+                        channels.put(address, channel);
+                    }
+
+                    final CountDownLatch latch = new CountDownLatch(1);
+                    channel.writeAndFlush(byteBuf).addListener(new ChannelFutureListener() {
+                        @Override
+                        public void operationComplete(ChannelFuture channelFuture) throws Exception {
+                            latch.countDown();
+                        }
+                    });
+                    latch.await();
+                } catch (InterruptedException e) {
+                    throw new IllegalStateException("Could not send message to " + partition + ":" + state, e);
+                }
             }
         }
     }
