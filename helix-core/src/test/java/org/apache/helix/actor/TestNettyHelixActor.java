@@ -1,8 +1,8 @@
 package org.apache.helix.actor;
 
-import org.I0Itec.zkclient.ZkServer;
 import org.apache.helix.*;
 import org.apache.helix.controller.HelixControllerMain;
+import org.apache.helix.integration.ZkIntegrationTestBase;
 import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.Message;
@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class TestNettyHelixActor {
+public class TestNettyHelixActor extends ZkIntegrationTestBase {
 
     private static final String CLUSTER_NAME = "TEST_CLUSTER";
     private static final String RESOURCE_NAME = "MyResource";
@@ -40,8 +40,6 @@ public class TestNettyHelixActor {
         }
     };
 
-    private int zkPort;
-    private ZkServer zkServer;
     private int firstPort;
     private int secondPort;
     private HelixManager controller;
@@ -51,13 +49,11 @@ public class TestNettyHelixActor {
     @BeforeClass
     public void beforeClass() throws Exception {
         // Allocate test resources
-        zkPort = TestHelper.getRandomPort();
-        zkServer = TestHelper.startZkServer("localhost:" + zkPort);
         firstPort = TestHelper.getRandomPort();
         secondPort = TestHelper.getRandomPort();
 
         // Setup cluster
-        ClusterSetup clusterSetup = new ClusterSetup("localhost:" + zkPort);
+        ClusterSetup clusterSetup = new ClusterSetup(ZK_ADDR);
         clusterSetup.addCluster(CLUSTER_NAME, true);
         clusterSetup.addInstanceToCluster(CLUSTER_NAME, "localhost_" + firstPort);
         clusterSetup.addInstanceToCluster(CLUSTER_NAME, "localhost_" + secondPort);
@@ -65,9 +61,9 @@ public class TestNettyHelixActor {
         clusterSetup.setConfig(HelixConfigScope.ConfigScopeProperty.PARTICIPANT, CLUSTER_NAME + ",localhost_" + secondPort, "ACTOR_PORT=" + secondPort);
 
         // Start Helix agents
-        controller = HelixControllerMain.startHelixController("localhost:" + zkPort, CLUSTER_NAME, "CONTROLLER", "STANDALONE");
-        firstNode = HelixManagerFactory.getZKHelixManager(CLUSTER_NAME, "localhost_" + firstPort, InstanceType.PARTICIPANT, "localhost:" + zkPort);
-        secondNode = HelixManagerFactory.getZKHelixManager(CLUSTER_NAME, "localhost_" + secondPort, InstanceType.PARTICIPANT, "localhost:" + zkPort);
+        controller = HelixControllerMain.startHelixController(ZK_ADDR, CLUSTER_NAME, "CONTROLLER", "STANDALONE");
+        firstNode = HelixManagerFactory.getZKHelixManager(CLUSTER_NAME, "localhost_" + firstPort, InstanceType.PARTICIPANT, ZK_ADDR);
+        secondNode = HelixManagerFactory.getZKHelixManager(CLUSTER_NAME, "localhost_" + secondPort, InstanceType.PARTICIPANT, ZK_ADDR);
 
         // Connect participants
         firstNode.getStateMachineEngine().registerStateModelFactory("OnlineOffline", new DummyStateModelFactory());
@@ -85,7 +81,6 @@ public class TestNettyHelixActor {
         firstNode.disconnect();
         secondNode.disconnect();
         controller.disconnect();
-        TestHelper.stopZkServer(zkServer);
     }
 
     @Test
