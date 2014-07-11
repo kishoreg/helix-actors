@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Provides partition/state-level messaging among nodes in a Helix cluster.
  *
  * <p>
- *     Message format is: [ nameLength (4B) | name (var) | stateLength (4B) | state (var) | message (var) ]
+ *     Message format is: [ nameLength (4B) | name (var) | stateLength (4B) | state (var) | messageLength (4B) | message (var) ]
  * </p>
  *
  * <p>
@@ -143,12 +143,14 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
         // Encode and wrap message
         String partitionName = partition.getPartitionName();
+        byte[] messageBytes = codec.encode(message);
         ByteBuf byteBuf = Unpooled.wrappedBuffer(
                 ByteBuffer.allocate(4).putInt(partitionName.length()).array(),
                 partitionName.getBytes(),
                 ByteBuffer.allocate(4).putInt(state.length()).array(),
                 state.getBytes(),
-                this.codec.encode(message));
+                ByteBuffer.allocate(4).putInt(messageBytes.length).array(),
+                messageBytes);
 
         // Send message(s)
         for (final InetSocketAddress address : addresses) {
@@ -226,7 +228,8 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             byteBuf.readBytes(stateBytes);
 
             // Message
-            byte[] messageBytes = new byte[byteBuf.readableBytes()];
+            int messageBytesSize = byteBuf.readInt();
+            byte[] messageBytes = new byte[messageBytesSize];
             byteBuf.readBytes(messageBytes);
 
             // Parse
