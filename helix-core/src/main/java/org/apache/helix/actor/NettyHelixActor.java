@@ -101,7 +101,16 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                         }
                     });
 
-            bootstrapRoutingTable();
+            // Bootstrap routing table
+            List<String> resources = manager.getClusterManagmentTool().getResourcesInCluster(manager.getClusterName());
+            List<ExternalView> externalViews = new ArrayList<ExternalView>(resources.size());
+            for (String resource : resources) {
+                ExternalView externalView = manager.getClusterManagmentTool().getResourceExternalView(manager.getClusterName(), resource);
+                if (externalView != null) {
+                    externalViews.add(externalView);
+                }
+            }
+            onExternalViewChange(externalViews, null);
         }
     }
 
@@ -158,24 +167,15 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
     @Override
     public void onExternalViewChange(List<ExternalView> externalViewList, NotificationContext changeContext) {
-        bootstrapRoutingTable();
-    }
-
-    // Builds mapping of instance name to actor socket address
-    private void bootstrapRoutingTable() {
-        List<String> resources = manager.getClusterManagmentTool().getResourcesInCluster(manager.getClusterName());
-        for (String resource : resources) {
-            ExternalView externalView
-                    = manager.getClusterManagmentTool().getResourceExternalView(manager.getClusterName(), resource);
-            if (externalView != null) {
+        synchronized (ipcAddresses) {
+            for (ExternalView externalView : externalViewList) {
                 Set<String> partitions = externalView.getPartitionSet();
                 if (partitions != null) {
                     for (String partitionName : partitions) {
                         for (Map.Entry<String, String> stateEntry : externalView.getStateMap(partitionName).entrySet()) {
                             String instance = stateEntry.getKey();
-                            InstanceConfig instanceConfig
-                                    = manager.getClusterManagmentTool().getInstanceConfig(manager.getClusterName(), instance);
-                            String actorPort = instanceConfig.getRecord().getSimpleField(ACTOR_PORT);
+                            InstanceConfig config = manager.getClusterManagmentTool().getInstanceConfig(manager.getClusterName(), instance);
+                            String actorPort = config.getRecord().getSimpleField(ACTOR_PORT);
                             if (actorPort != null) {
                                 String host = instance.substring(0, instance.lastIndexOf("_"));
                                 ipcAddresses.put(instance, new InetSocketAddress(host, Integer.parseInt(actorPort)));
