@@ -89,6 +89,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             clientBootstrap = new Bootstrap()
                     .group(clientEventLoopGroup)
                     .channel(NioSocketChannel.class)
+                    .option(ChannelOption.SO_KEEPALIVE, true)
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
