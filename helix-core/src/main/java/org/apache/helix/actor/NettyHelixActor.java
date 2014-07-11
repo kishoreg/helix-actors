@@ -47,7 +47,6 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     private EventLoopGroup serverEventLoopGroup;
     private EventLoopGroup clientEventLoopGroup;
     private Bootstrap clientBootstrap;
-    private NettyHelixActorChannelPool channelPool;
 
     /**
      * @param manager
@@ -102,8 +101,6 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                         }
                     });
 
-            channelPool = new NettyHelixActorChannelPool(clientBootstrap);
-
             bootstrapRoutingTable();
         }
     }
@@ -144,13 +141,8 @@ public class NettyHelixActor<T> implements HelixActor<T> {
         // Send message(s)
         for (final InetSocketAddress address : addresses) {
             try {
-                final ChannelFuture cf = channelPool.getChannelFuture(address);
-                cf.channel().writeAndFlush(byteBuf).addListener(new ChannelFutureListener() {
-                    @Override
-                    public void operationComplete(ChannelFuture channelFuture) throws Exception {
-                        channelPool.releaseChannelFuture(address, cf);
-                    }
-                });
+                Channel channel = clientBootstrap.connect(address).sync().channel();
+                channel.writeAndFlush(byteBuf).addListener(ChannelFutureListener.CLOSE);
             } catch (InterruptedException e) {
                 throw new IllegalStateException("Could not send message to " + partition + ":" + state, e);
             }
