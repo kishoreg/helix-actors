@@ -77,7 +77,7 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
         clusterSetup.rebalanceResource(CLUSTER_NAME, RESOURCE_NAME, 1);
 
         // Wait for External view convergence
-        verifyResource(_gZkClient, CLUSTER_NAME, RESOURCE_NAME, true);
+        ClusterStateVerifier.verifyByZkCallback(new ClusterStateVerifier.BestPossAndExtViewZkVerifier(ZK_ADDR, CLUSTER_NAME), 10000);
     }
 
     @AfterClass

@@ -130,12 +130,14 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     public void send(Partition partition, String state, T message) {
         // Get addresses
         List<InetSocketAddress> addresses = new ArrayList<InetSocketAddress>();
-        for (String instance : getInstances(partition, state)) {
-            InetSocketAddress address = ipcAddresses.get(instance);
-            if (address == null) {
-                throw new IllegalStateException("No actor address for target instance " + instance);
+        synchronized (ipcAddresses) {
+            for (String instance : getInstances(partition, state)) {
+                InetSocketAddress address = ipcAddresses.get(instance);
+                if (address == null) {
+                    throw new IllegalStateException("No actor address for target instance " + instance);
+                }
+                addresses.add(address);
             }
-            addresses.add(address);
         }
 
         // Encode and wrap message
@@ -168,6 +170,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     @Override
     public void onExternalViewChange(List<ExternalView> externalViewList, NotificationContext changeContext) {
         synchronized (ipcAddresses) {
+            ipcAddresses.clear();
             for (ExternalView externalView : externalViewList) {
                 Set<String> partitions = externalView.getPartitionSet();
                 if (partitions != null) {
