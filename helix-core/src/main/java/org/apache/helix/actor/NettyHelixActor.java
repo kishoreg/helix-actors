@@ -153,6 +153,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
         // Send message(s)
         for (final InetSocketAddress address : addresses) {
             try {
+                // TODO: Reuse channels - just for simplicity now
                 Channel channel = clientBootstrap.connect(address).sync().channel();
                 channel.writeAndFlush(byteBuf).addListener(ChannelFutureListener.CLOSE);
             } catch (InterruptedException e) {
