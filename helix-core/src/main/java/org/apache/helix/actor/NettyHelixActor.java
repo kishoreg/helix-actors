@@ -193,9 +193,14 @@ public class NettyHelixActor<T> implements HelixActor<T> {
         String partitionName = partition.getPartitionName();
         String resourceName = partitionName.substring(0, partitionName.lastIndexOf("_"));
         ExternalView externalView = manager.getClusterManagmentTool().getResourceExternalView(manager.getClusterName(), resourceName);
-        for (Map.Entry<String, String> stateEntry : externalView.getStateMap(partitionName).entrySet()) {
-            if (stateEntry.getValue().equals(state)) {
-                instances.add(stateEntry.getKey());
+        if (externalView != null) {
+            Map<String, String> stateMap = externalView.getStateMap(partitionName);
+            if (stateMap != null) {
+                for (Map.Entry<String, String> stateEntry : stateMap.entrySet()) {
+                    if (stateEntry.getValue().equals(state)) {
+                        instances.add(stateEntry.getKey());
+                    }
+                }
             }
         }
         return instances;

@@ -12,6 +12,7 @@ import org.apache.helix.participant.statemachine.StateModelFactory;
 import org.apache.helix.participant.statemachine.StateModelInfo;
 import org.apache.helix.participant.statemachine.Transition;
 import org.apache.helix.tools.ClusterSetup;
+import org.apache.helix.tools.ClusterStateVerifier;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -24,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class TestNettyHelixActor extends ZkIntegrationTestBase {
+public class TestNettyHelixActor extends ZkUnitTestBase {
 
     private static final String CLUSTER_NAME = "TEST_CLUSTER";
     private static final String RESOURCE_NAME = "MyResource";
@@ -74,6 +75,9 @@ public class TestNettyHelixActor extends ZkIntegrationTestBase {
         // Add a resource
         clusterSetup.addResourceToCluster(CLUSTER_NAME, RESOURCE_NAME, 4, "OnlineOffline");
         clusterSetup.rebalanceResource(CLUSTER_NAME, RESOURCE_NAME, 1);
+
+        // Wait for External view convergence
+        verifyResource(_gZkClient, CLUSTER_NAME, RESOURCE_NAME, true);
     }
 
     @AfterClass
