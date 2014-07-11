@@ -11,3 +11,4 @@ out/
 .DS_Store
 #this directory will be part of release process 
 helix-dev-release/
+zookeeper.out

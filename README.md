@@ -17,6 +17,8 @@ specific language governing permissions and limitations
 under the License.
 -->
 
+(Fork of Helix to work on Actor stuff)
+
 Apache Helix
 ---------------
 Helix is part of the Apache Software Foundation. 

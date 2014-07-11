@@ -524,3 +524,11 @@ EndOfStreamException: Unable to read additional data from client sessionid 0x147
 2014-07-10 13:42:46,001 [myid:] - INFO  [SessionTracker:ZooKeeperServer@325] - Expiring session 0x14721d5e9f2001b, timeout of 30000ms exceeded
 2014-07-10 13:42:46,002 [myid:] - INFO  [ProcessThread(sid:0 cport:-1)::PrepRequestProcessor@476] - Processed session termination for sessionid: 0x14721d5e9f2001e
 2014-07-10 13:42:46,002 [myid:] - INFO  [ProcessThread(sid:0 cport:-1)::PrepRequestProcessor@476] - Processed session termination for sessionid: 0x14721d5e9f2001b
+2014-07-10 14:14:21,470 [myid:] - INFO  [SessionTracker:ZooKeeperServer@325] - Expiring session 0x14721d5e9f2000b, timeout of 5000ms exceeded
+2014-07-10 14:14:21,472 [myid:] - INFO  [ProcessThread(sid:0 cport:-1)::PrepRequestProcessor@476] - Processed session termination for sessionid: 0x14721d5e9f2000b
+2014-07-10 14:14:21,473 [myid:] - INFO  [SyncThread:0:NIOServerCnxn@1001] - Closed socket connection for client /fe80:0:0:0:0:0:0:1%1:53047 which had sessionid 0x14721d5e9f2000b
+2014-07-10 14:14:23,810 [myid:] - INFO  [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxnFactory@197] - Accepted socket connection from /0:0:0:0:0:0:0:1%0:53145
+2014-07-10 14:14:23,811 [myid:] - WARN  [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:ZooKeeperServer@793] - Connection request from old client /0:0:0:0:0:0:0:1%0:53145; will be dropped if server is in r-o mode
+2014-07-10 14:14:23,812 [myid:] - INFO  [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:ZooKeeperServer@832] - Client attempting to renew session 0x14721d5e9f2000b at /0:0:0:0:0:0:0:1%0:53145
+2014-07-10 14:14:23,812 [myid:] - INFO  [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:ZooKeeperServer@588] - Invalid session 0x14721d5e9f2000b for client /0:0:0:0:0:0:0:1%0:53145, probably expired
+2014-07-10 14:14:23,812 [myid:] - INFO  [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@1001] - Closed socket connection for client /0:0:0:0:0:0:0:1%0:53145 which had sessionid 0x14721d5e9f2000b
