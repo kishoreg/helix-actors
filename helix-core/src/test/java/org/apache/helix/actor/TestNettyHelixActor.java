@@ -133,14 +133,14 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
         // And use first node to send messages to them
         for (String partitionName : secondPartitions) {
             for (int i = 0; i < numMessages; i++) {
-                firstActor.send(new Partition(partitionName), "ONLINE", "Hello world!");
+                firstActor.send(new Partition(partitionName), "ONLINE", "Hello world! " + i);
             }
         }
 
         // Loopback
         for (String partitionName : secondPartitions) {
             for (int i = 0; i < numMessages; i++) {
-                secondActor.send(new Partition(partitionName), "ONLINE", "Hello world!");
+                secondActor.send(new Partition(partitionName), "ONLINE", "Hello world! " + i);
             }
         }
 

@@ -9,6 +9,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import org.apache.helix.*;
 import org.apache.helix.model.*;
 import org.apache.log4j.Logger;
@@ -36,6 +37,9 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
     private static final Logger LOG = Logger.getLogger(NettyHelixActor.class);
     private static final String ACTOR_PORT = "ACTOR_PORT";
+
+    // TODO: This may be an inappropriate delimiter, especially if messages are HTTP. Figure one out, or use a different frame decoder
+    private static final ByteBuf DELIMITER = Unpooled.wrappedBuffer("\r\n".getBytes());
 
     private final AtomicBoolean isShutdown;
     private final ConcurrentMap<String, HelixActorCallback<T>> callbacks;
@@ -83,6 +87,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
+                            socketChannel.pipeline().addLast(new DelimiterBasedFrameDecoder(1024 * 1024, DELIMITER));
                             socketChannel.pipeline().addLast(new HelixActorCallbackHandler());
                         }
                     })
@@ -98,7 +103,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                             socketChannel.pipeline().addLast(new SimpleChannelInboundHandler<SocketChannel>() {
                                 @Override
                                 protected void channelRead0(ChannelHandlerContext channelHandlerContext, SocketChannel socketChannel) throws Exception {
-                                    // Do nothing
+                                    // Drop any potential response (not expecting one)
                                 }
                             });
                         }
@@ -152,7 +157,8 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                 ByteBuffer.allocate(4).putInt(state.length()).array(),
                 state.getBytes(),
                 ByteBuffer.allocate(4).putInt(messageBytes.length).array(),
-                messageBytes);
+                messageBytes,
+                DELIMITER.array());
 
         // Send message(s)
         for (final InetSocketAddress address : addresses) {
@@ -225,39 +231,36 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     private class HelixActorCallbackHandler extends SimpleChannelInboundHandler<ByteBuf> {
         @Override
         protected void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf) throws Exception {
-            // Multiple messages may have built up in buffer, so process them all
-            while (byteBuf.readableBytes() > 0) {
-                // Partition name
-                int nameSize = byteBuf.readInt();
-                byte[] nameBytes = new byte[nameSize];
-                byteBuf.readBytes(nameBytes);
+            // Partition name
+            int nameSize = byteBuf.readInt();
+            byte[] nameBytes = new byte[nameSize];
+            byteBuf.readBytes(nameBytes);
 
-                // Partition state
-                int stateSize = byteBuf.readInt();
-                byte[] stateBytes = new byte[stateSize];
-                byteBuf.readBytes(stateBytes);
+            // Partition state
+            int stateSize = byteBuf.readInt();
+            byte[] stateBytes = new byte[stateSize];
+            byteBuf.readBytes(stateBytes);
 
-                // Message
-                int messageBytesSize = byteBuf.readInt();
-                byte[] messageBytes = new byte[messageBytesSize];
-                byteBuf.readBytes(messageBytes);
+            // Message
+            int messageBytesSize = byteBuf.readInt();
+            byte[] messageBytes = new byte[messageBytesSize];
+            byteBuf.readBytes(messageBytes);
 
-                // Parse
-                String partitionName = new String(nameBytes);
-                String resourceName = partitionName.substring(0, partitionName.lastIndexOf("_"));
-                String state = new String(stateBytes);
-                T message = codec.decode(messageBytes);
+            // Parse
+            String partitionName = new String(nameBytes);
+            String state = new String(stateBytes);
+            T message = codec.decode(messageBytes);
 
-                // Handle callback
-                HelixActorCallback<T> callback = callbacks.get(resourceName);
-                if (callback == null) {
-                    throw new IllegalStateException("No callback registered for resource " + resourceName);
-                }
-                callback.onMessage(new Partition(partitionName), state, message);
+            // Handle callback
+            String resourceName = partitionName.substring(0, partitionName.lastIndexOf("_"));
+            HelixActorCallback<T> callback = callbacks.get(resourceName);
+            if (callback == null) {
+                throw new IllegalStateException("No callback registered for resource " + resourceName);
             }
+            callback.onMessage(new Partition(partitionName), state, message);
 
-            // Done reading
-            byteBuf.resetReaderIndex();
+            // Done with those
+            byteBuf.discardReadBytes();
         }
 
         @Override
