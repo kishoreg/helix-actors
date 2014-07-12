@@ -88,6 +88,8 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
 
     @Test
     public void testMessagePassing() throws Exception {
+        int numMessages = 100;
+
         // Start first Actor w/ counter
         final ConcurrentMap<String, AtomicInteger> firstCounts = new ConcurrentHashMap<String, AtomicInteger>();
         NettyHelixActor<String> firstActor = new NettyHelixActor<String>(firstNode, firstPort, CODEC);
@@ -130,12 +132,16 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
 
         // And use first node to send messages to them
         for (String partitionName : secondPartitions) {
-            firstActor.send(new Partition(partitionName), "ONLINE", "Hello world!");
+            for (int i = 0; i < numMessages; i++) {
+                firstActor.send(new Partition(partitionName), "ONLINE", "Hello world!");
+            }
         }
 
         // Loopback
         for (String partitionName : secondPartitions) {
-            secondActor.send(new Partition(partitionName), "ONLINE", "Hello world!");
+            for (int i = 0; i < numMessages; i++) {
+                secondActor.send(new Partition(partitionName), "ONLINE", "Hello world!");
+            }
         }
 
         // Check
@@ -143,7 +149,7 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
         for (String partitionName : secondPartitions) {
             AtomicInteger count = secondCounts.get(partitionName + ":ONLINE");
             Assert.assertNotNull(count);
-            Assert.assertEquals(count.get(), 2);
+            Assert.assertEquals(count.get(), 2 * numMessages);
         }
     }
 
