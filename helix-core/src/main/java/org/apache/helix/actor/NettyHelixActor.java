@@ -148,12 +148,17 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             }
         }
 
-        // Encode and wrap message
-        String partitionName = partition.getPartitionName();
+        // Encode
+        byte[] partitionNameBytes = partition.getPartitionName().getBytes();
+        byte[] stateBytes = state.getBytes();
         byte[] messageBytes = codec.encode(message);
+        int messageLength = 16 + partitionNameBytes.length + stateBytes.length + messageBytes.length;
+
+        // Encode and wrap message
         ByteBuf byteBuf = Unpooled.wrappedBuffer(
-                ByteBuffer.allocate(4).putInt(partitionName.length()).array(),
-                partitionName.getBytes(),
+                ByteBuffer.allocate(4).putInt(messageLength).array(),
+                ByteBuffer.allocate(4).putInt(partitionNameBytes.length).array(),
+                partitionNameBytes,
                 ByteBuffer.allocate(4).putInt(state.length()).array(),
                 state.getBytes(),
                 ByteBuffer.allocate(4).putInt(messageBytes.length).array(),
@@ -231,6 +236,9 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     private class HelixActorCallbackHandler extends SimpleChannelInboundHandler<ByteBuf> {
         @Override
         protected void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf) throws Exception {
+            // Message length
+            int messageLength = byteBuf.readInt();
+
             // Partition name
             int nameSize = byteBuf.readInt();
             byte[] nameBytes = new byte[nameSize];
