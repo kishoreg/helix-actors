@@ -9,7 +9,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.DelimiterBasedFrameDecoder;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.helix.*;
 import org.apache.helix.model.*;
 import org.apache.log4j.Logger;
@@ -38,8 +38,12 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     private static final Logger LOG = Logger.getLogger(NettyHelixActor.class);
     private static final String ACTOR_PORT = "ACTOR_PORT";
 
-    // TODO: This may be an inappropriate delimiter, especially if messages are HTTP. Figure one out, or use a different frame decoder
-    private static final ByteBuf DELIMITER = Unpooled.wrappedBuffer("\r\n".getBytes());
+    // Parameters for length header field of message (tells decoder to interpret but preserve length field in message)
+    private static final int MAX_FRAME_LENGTH = 1024 * 1024;
+    private static final int LENGTH_FIELD_OFFSET = 0;
+    private static final int LENGTH_FIELD_LENGTH = 4;
+    private static final int LENGTH_ADJUSTMENT = -4;
+    private static final int INITIAL_BYTES_TO_STRIP = 0;
 
     private final AtomicBoolean isShutdown;
     private final ConcurrentMap<String, HelixActorCallback<T>> callbacks;
@@ -87,7 +91,12 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
-                            socketChannel.pipeline().addLast(new DelimiterBasedFrameDecoder(1024 * 1024, DELIMITER));
+                            socketChannel.pipeline().addLast(new LengthFieldBasedFrameDecoder(
+                                    MAX_FRAME_LENGTH,
+                                    LENGTH_FIELD_OFFSET,
+                                    LENGTH_FIELD_LENGTH,
+                                    LENGTH_ADJUSTMENT,
+                                    INITIAL_BYTES_TO_STRIP));
                             socketChannel.pipeline().addLast(new HelixActorCallbackHandler());
                         }
                     })
@@ -162,8 +171,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                 ByteBuffer.allocate(4).putInt(state.length()).array(),
                 state.getBytes(),
                 ByteBuffer.allocate(4).putInt(messageBytes.length).array(),
-                messageBytes,
-                DELIMITER.array());
+                messageBytes);
 
         // Send message(s)
         for (final InetSocketAddress address : addresses) {
