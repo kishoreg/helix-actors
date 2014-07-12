@@ -40,6 +40,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     private final AtomicBoolean isShutdown;
     private final ConcurrentMap<String, HelixActorCallback<T>> callbacks;
     private final ConcurrentMap<String, InetSocketAddress> ipcAddresses;
+    private final ConcurrentMap<InetSocketAddress, Channel> channels;
     private final HelixManager manager;
     private final int port;
     private final HelixActorMessageCodec<T> codec;
@@ -60,6 +61,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
         this.isShutdown = new AtomicBoolean(true);
         this.callbacks = new ConcurrentHashMap<String, HelixActorCallback<T>>();
         this.ipcAddresses = new ConcurrentHashMap<String, InetSocketAddress>();
+        this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
         this.manager = manager;
         this.port = port;
         this.codec = codec;
@@ -155,10 +157,16 @@ public class NettyHelixActor<T> implements HelixActor<T> {
         // Send message(s)
         for (final InetSocketAddress address : addresses) {
             try {
-                // TODO: Reuse channels - just for simplicity now
-                Channel channel = clientBootstrap.connect(address).sync().channel();
-                channel.writeAndFlush(byteBuf).addListener(ChannelFutureListener.CLOSE);
-            } catch (InterruptedException e) {
+                Channel channel = null;
+                synchronized (channels) {
+                    channel = channels.get(address);
+                    if (channel == null || !channel.isOpen()) {
+                        channel = clientBootstrap.connect(address).sync().channel();
+                        channels.put(address, channel);
+                    }
+                }
+                channel.writeAndFlush(byteBuf);
+            } catch (Exception e) {
                 throw new IllegalStateException("Could not send message to " + partition + ":" + state, e);
             }
         }
@@ -217,33 +225,39 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     private class HelixActorCallbackHandler extends SimpleChannelInboundHandler<ByteBuf> {
         @Override
         protected void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf) throws Exception {
-            // Partition name
-            int nameSize = byteBuf.readInt();
-            byte[] nameBytes = new byte[nameSize];
-            byteBuf.readBytes(nameBytes);
+            // Multiple messages may have built up in buffer, so process them all
+            while (byteBuf.readableBytes() > 0) {
+                // Partition name
+                int nameSize = byteBuf.readInt();
+                byte[] nameBytes = new byte[nameSize];
+                byteBuf.readBytes(nameBytes);
 
-            // Partition state
-            int stateSize = byteBuf.readInt();
-            byte[] stateBytes = new byte[stateSize];
-            byteBuf.readBytes(stateBytes);
+                // Partition state
+                int stateSize = byteBuf.readInt();
+                byte[] stateBytes = new byte[stateSize];
+                byteBuf.readBytes(stateBytes);
 
-            // Message
-            int messageBytesSize = byteBuf.readInt();
-            byte[] messageBytes = new byte[messageBytesSize];
-            byteBuf.readBytes(messageBytes);
+                // Message
+                int messageBytesSize = byteBuf.readInt();
+                byte[] messageBytes = new byte[messageBytesSize];
+                byteBuf.readBytes(messageBytes);
 
-            // Parse
-            String partitionName = new String(nameBytes);
-            String resourceName = partitionName.substring(0, partitionName.lastIndexOf("_"));
-            String state = new String(stateBytes);
-            T message = codec.decode(messageBytes);
+                // Parse
+                String partitionName = new String(nameBytes);
+                String resourceName = partitionName.substring(0, partitionName.lastIndexOf("_"));
+                String state = new String(stateBytes);
+                T message = codec.decode(messageBytes);
 
-            // Handle callback
-            HelixActorCallback<T> callback = callbacks.get(resourceName);
-            if (callback == null) {
-                throw new IllegalStateException("No callback registered for resource " + resourceName);
+                // Handle callback
+                HelixActorCallback<T> callback = callbacks.get(resourceName);
+                if (callback == null) {
+                    throw new IllegalStateException("No callback registered for resource " + resourceName);
+                }
+                callback.onMessage(new Partition(partitionName), state, message);
             }
-            callback.onMessage(new Partition(partitionName), state, message);
+
+            // Done reading
+            byteBuf.resetReaderIndex();
         }
 
         @Override

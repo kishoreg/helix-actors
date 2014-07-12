@@ -2,7 +2,6 @@ package org.apache.helix.actor;
 
 import org.apache.helix.*;
 import org.apache.helix.controller.HelixControllerMain;
-import org.apache.helix.integration.ZkIntegrationTestBase;
 import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.Message;
@@ -140,7 +139,7 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
         }
 
         // Check
-        Thread.sleep(500);
+        Thread.sleep(100); // just in case
         for (String partitionName : secondPartitions) {
             AtomicInteger count = secondCounts.get(partitionName + ":ONLINE");
             Assert.assertNotNull(count);
