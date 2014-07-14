@@ -198,6 +198,11 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
     /**
      * Register a callback which is called when this node receives a message for any partition/state of a resource.
+     *
+     * <p>
+     *     Only one callback may be registerd per resource. A subsequent call to this method results in the most
+     *     recently supplied callback being the one that's registered.
+     * </p>
      */
     public void register(String resource, HelixActorCallback<T> callback) {
         callbacks.put(resource, callback);
