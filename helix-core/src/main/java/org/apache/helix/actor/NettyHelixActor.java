@@ -5,6 +5,7 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -116,17 +117,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                     .channel(NioSocketChannel.class)
                     .option(ChannelOption.SO_KEEPALIVE, true)
                     .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
-                    .handler(new ChannelInitializer<SocketChannel>() {
-                        @Override
-                        protected void initChannel(SocketChannel socketChannel) throws Exception {
-                            socketChannel.pipeline().addLast(new SimpleChannelInboundHandler<SocketChannel>() {
-                                @Override
-                                protected void channelRead0(ChannelHandlerContext channelHandlerContext, SocketChannel socketChannel) throws Exception {
-                                    // Drop any potential response (not expecting one)
-                                }
-                            });
-                        }
-                    });
+                    .handler(new NopInitializer());
 
             // Bootstrap routing table
             List<String> resources = manager.getClusterManagmentTool().getResourcesInCluster(manager.getClusterName());
@@ -250,6 +241,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     }
 
     // Routes received messages to their respective callbacks
+    @ChannelHandler.Sharable
     private class HelixActorCallbackHandler extends SimpleChannelInboundHandler<ByteBuf> {
         @Override
         protected void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf) throws Exception {
@@ -303,6 +295,22 @@ public class NettyHelixActor<T> implements HelixActor<T> {
         @Override
         public void exceptionCaught(ChannelHandlerContext channelHandlerContext, Throwable cause) {
             LOG.error(cause);
+        }
+    }
+
+    private static class NopInitializer extends ChannelInitializer<SocketChannel> {
+        private static final ChannelHandler INSTANCE = new NopHandler();
+        @Override
+        protected void initChannel(SocketChannel socketChannel) throws Exception {
+            socketChannel.pipeline().addLast(INSTANCE);
+        }
+    }
+
+    @ChannelHandler.Sharable
+    private static class NopHandler extends SimpleChannelInboundHandler<SocketChannel> {
+        @Override
+        protected void channelRead0(ChannelHandlerContext channelHandlerContext, SocketChannel socketChannel) throws Exception {
+            // NOP
         }
     }
 }
