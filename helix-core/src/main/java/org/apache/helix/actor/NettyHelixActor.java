@@ -39,12 +39,26 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Provides partition/state-level messaging among nodes in a Helix cluster.
  *
  * <p>
- *     Message format is: [ nameLength (4B) | name (var) | stateLength (4B) | state (var) | messageLength (4B) | message (var) ]
- * </p>
- *
- * <p>
- *     This module accepts a typed {@link HelixActorMessageCodec}, which is used to serialize / deserialize
- *     message body.
+ *     The message format is
+ <pre>
+     +----------------------+
+     | totalLength (4B)     |
+     +----------------------+
+     | nameLength (4B)      |
+     +----------------------+
+     | name (var)           |
+     +----------------------+
+     | stateLength (4B)     |
+     +----------------------+
+     | state (var)          |
+     +----------------------+
+     | messageLength (4B)   |
+     +----------------------+
+     |                      |
+     | message (var)        |
+     |                      |
+     +----------------------+
+ </pre>
  * </p>
  */
 public class NettyHelixActor<T> implements HelixActor<T> {
