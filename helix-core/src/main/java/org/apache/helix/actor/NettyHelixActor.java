@@ -20,8 +20,10 @@ import org.apache.helix.HelixManager;
 import org.apache.helix.HelixProperty;
 import org.apache.helix.NotificationContext;
 import org.apache.helix.model.ExternalView;
+import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.InstanceConfig;
 import org.apache.helix.model.Partition;
+import org.apache.helix.model.builder.HelixConfigScopeBuilder;
 import org.apache.log4j.Logger;
 
 import java.net.InetSocketAddress;
@@ -92,6 +94,12 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     public void start() {
         if (isShutdown.getAndSet(false)) {
             eventLoopGroup = new NioEventLoopGroup();
+
+            manager.getConfigAccessor().set(
+                    new HelixConfigScopeBuilder(HelixConfigScope.ConfigScopeProperty.PARTICIPANT)
+                            .forCluster(manager.getClusterName())
+                            .forParticipant(manager.getInstanceName())
+                            .build(), ACTOR_PORT, String.valueOf(port));
 
             new ServerBootstrap()
                     .group(eventLoopGroup)
@@ -200,7 +208,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     }
 
     @Override
-    public void onConfigChange(List<HelixProperty> configs, NotificationContext context) {
+    public void onInstanceConfigChange(List<InstanceConfig> instanceConfigs, NotificationContext context) {
         bootstrapRoutingTable(getExternalViews());
     }
 

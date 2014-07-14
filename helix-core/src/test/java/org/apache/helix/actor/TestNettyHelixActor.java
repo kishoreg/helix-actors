@@ -57,8 +57,6 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
         clusterSetup.addCluster(CLUSTER_NAME, true);
         clusterSetup.addInstanceToCluster(CLUSTER_NAME, "localhost_" + firstPort);
         clusterSetup.addInstanceToCluster(CLUSTER_NAME, "localhost_" + secondPort);
-        clusterSetup.setConfig(HelixConfigScope.ConfigScopeProperty.PARTICIPANT, CLUSTER_NAME + ",localhost_" + firstPort, "ACTOR_PORT=" + firstPort);
-        clusterSetup.setConfig(HelixConfigScope.ConfigScopeProperty.PARTICIPANT, CLUSTER_NAME + ",localhost_" + secondPort, "ACTOR_PORT=" + secondPort);
 
         // Start Helix agents
         controller = HelixControllerMain.startHelixController(ZK_ADDR, CLUSTER_NAME, "CONTROLLER", "STANDALONE");
@@ -102,6 +100,7 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
             }
         });
         firstNode.addExternalViewChangeListener(firstActor);
+        firstNode.addInstanceConfigChangeListener(firstActor);
         firstActor.start();
 
         // Start second Actor w/ counter
@@ -116,6 +115,7 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
             }
         });
         secondNode.addExternalViewChangeListener(secondActor);
+        secondNode.addInstanceConfigChangeListener(secondActor);
         secondActor.start();
 
         // Find all partitions on second node...
