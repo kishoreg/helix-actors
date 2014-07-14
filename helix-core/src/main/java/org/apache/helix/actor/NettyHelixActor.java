@@ -247,7 +247,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     @ChannelHandler.Sharable
     private class HelixActorCallbackHandler extends SimpleChannelInboundHandler<ByteBuf> {
         @Override
-        protected void channelRead0(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf) throws Exception {
+        protected void channelRead0(ChannelHandlerContext ctx, ByteBuf byteBuf) throws Exception {
             // Message length
             int messageLength = byteBuf.readInt();
 
@@ -279,17 +279,22 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             byteBuf.readBytes(messageBytes);
 
             // Parse
-            String partitionName = new String(nameBytes);
-            String state = new String(stateBytes);
-            T message = codec.decode(messageBytes);
+            final String partitionName = new String(nameBytes);
+            final String state = new String(stateBytes);
+            final T message = codec.decode(messageBytes);
 
-            // Handle callback
+            // Handle callback (don't block this handler b/c callback may be expensive)
             String resourceName = partitionName.substring(0, partitionName.lastIndexOf("_"));
-            HelixActorCallback<T> callback = callbacks.get(resourceName);
+            final HelixActorCallback<T> callback = callbacks.get(resourceName);
             if (callback == null) {
                 throw new IllegalStateException("No callback registered for resource " + resourceName);
             }
-            callback.onMessage(new Partition(partitionName), state, message);
+            ctx.channel().eventLoop().submit(new Runnable() {
+                @Override
+                public void run() {
+                    callback.onMessage(new Partition(partitionName), state, message);
+                }
+            });
 
             // Done with those
             byteBuf.discardReadBytes();
