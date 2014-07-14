@@ -17,6 +17,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.helix.HelixManager;
+import org.apache.helix.HelixProperty;
 import org.apache.helix.NotificationContext;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.InstanceConfig;
@@ -196,6 +197,11 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     @Override
     public void onExternalViewChange(List<ExternalView> externalViewList, NotificationContext changeContext) {
         bootstrapRoutingTable(externalViewList);
+    }
+
+    @Override
+    public void onConfigChange(List<HelixProperty> configs, NotificationContext context) {
+        bootstrapRoutingTable(getExternalViews());
     }
 
     // Given a partition and its state, find all instances that are in that state currently

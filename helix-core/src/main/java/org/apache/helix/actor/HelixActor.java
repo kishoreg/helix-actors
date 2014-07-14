@@ -1,6 +1,7 @@
 package org.apache.helix.actor;
 
 import org.apache.helix.ExternalViewChangeListener;
+import org.apache.helix.ScopedConfigChangeListener;
 import org.apache.helix.model.Partition;
 
 /**
@@ -13,7 +14,7 @@ import org.apache.helix.model.Partition;
  * @param <T>
  *   The message type
  */
-public interface HelixActor<T> extends ExternalViewChangeListener {
+public interface HelixActor<T> extends ExternalViewChangeListener, ScopedConfigChangeListener {
     void start();
     void shutdown();
     void send(Partition partition, String state, T message);
