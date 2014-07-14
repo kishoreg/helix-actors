@@ -63,8 +63,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     private final int port;
     private final HelixActorMessageCodec<T> codec;
 
-    private EventLoopGroup serverEventLoopGroup;
-    private EventLoopGroup clientEventLoopGroup;
+    private EventLoopGroup eventLoopGroup;
     private Bootstrap clientBootstrap;
 
     /**
@@ -90,11 +89,10 @@ public class NettyHelixActor<T> implements HelixActor<T> {
      */
     public void start() {
         if (isShutdown.getAndSet(false)) {
-            serverEventLoopGroup = new NioEventLoopGroup();
-            clientEventLoopGroup = new NioEventLoopGroup();
+            eventLoopGroup = new NioEventLoopGroup();
 
             new ServerBootstrap()
-                    .group(serverEventLoopGroup)
+                    .group(eventLoopGroup)
                     .channel(NioServerSocketChannel.class)
                     .option(ChannelOption.SO_KEEPALIVE, true)
                     .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
@@ -114,7 +112,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                     .bind(new InetSocketAddress(port));
 
             clientBootstrap = new Bootstrap()
-                    .group(clientEventLoopGroup)
+                    .group(eventLoopGroup)
                     .channel(NioSocketChannel.class)
                     .option(ChannelOption.SO_KEEPALIVE, true)
                     .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
@@ -148,8 +146,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
      */
     public void shutdown() {
         if (isShutdown.getAndSet(true)) {
-            clientEventLoopGroup.shutdownGracefully();
-            serverEventLoopGroup.shutdownGracefully();
+            eventLoopGroup.shutdownGracefully();
         }
     }
 
