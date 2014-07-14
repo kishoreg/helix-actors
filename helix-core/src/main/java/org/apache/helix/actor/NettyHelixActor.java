@@ -189,7 +189,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                         channels.put(address, channel);
                     }
                 }
-                channel.writeAndFlush(byteBuf);
+                channel.writeAndFlush(byteBuf, channel.voidPromise()); // TODO: No flush to avoid syscall?
             } catch (Exception e) {
                 throw new IllegalStateException("Could not send message to " + partition + ":" + state, e);
             }
