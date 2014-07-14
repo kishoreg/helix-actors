@@ -157,20 +157,13 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             }
         }
 
-        // Build message
+        // Encode message
         byte[] messageBytes = codec.encode(message);
-        ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
-        byteBuf.writeInt(16 + partition.getPartitionName().length() + state.length() + messageBytes.length)
-               .writeInt(partition.getPartitionName().length())
-               .writeBytes(partition.getPartitionName().getBytes())
-               .writeInt(state.length())
-               .writeBytes(state.getBytes())
-               .writeInt(messageBytes.length)
-               .writeBytes(messageBytes);
 
         // Send message(s)
         for (final InetSocketAddress address : addresses) {
             try {
+                // Get a channel (lazily connect)
                 Channel channel = null;
                 synchronized (channels) {
                     channel = channels.get(address);
@@ -179,6 +172,16 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                         channels.put(address, channel);
                     }
                 }
+
+                // Build and send message
+                ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
+                byteBuf.writeInt(16 + partition.getPartitionName().length() + state.length() + messageBytes.length)
+                       .writeInt(partition.getPartitionName().length())
+                       .writeBytes(partition.getPartitionName().getBytes())
+                       .writeInt(state.length())
+                       .writeBytes(state.getBytes())
+                       .writeInt(messageBytes.length)
+                       .writeBytes(messageBytes);
                 channel.writeAndFlush(byteBuf, channel.voidPromise()); // TODO: No flush to avoid syscall?
             } catch (Exception e) {
                 throw new IllegalStateException("Could not send message to " + partition + ":" + state, e);
