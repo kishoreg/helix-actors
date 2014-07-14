@@ -58,7 +58,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
     private final AtomicBoolean isShutdown;
     private final ConcurrentMap<String, HelixActorCallback<T>> callbacks;
-    private final ConcurrentMap<String, InetSocketAddress> ipcAddresses;
+    private final ConcurrentMap<String, InetSocketAddress> routingTable;
     private final ConcurrentMap<InetSocketAddress, Channel> channels;
     private final HelixManager manager;
     private final int port;
@@ -78,7 +78,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     public NettyHelixActor(HelixManager manager, int port, HelixActorMessageCodec<T> codec) {
         this.isShutdown = new AtomicBoolean(true);
         this.callbacks = new ConcurrentHashMap<String, HelixActorCallback<T>>();
-        this.ipcAddresses = new ConcurrentHashMap<String, InetSocketAddress>();
+        this.routingTable = new ConcurrentHashMap<String, InetSocketAddress>();
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
         this.manager = manager;
         this.port = port;
@@ -120,15 +120,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                     .handler(new NopInitializer());
 
             // Bootstrap routing table
-            List<String> resources = manager.getClusterManagmentTool().getResourcesInCluster(manager.getClusterName());
-            List<ExternalView> externalViews = new ArrayList<ExternalView>(resources.size());
-            for (String resource : resources) {
-                ExternalView externalView = manager.getClusterManagmentTool().getResourceExternalView(manager.getClusterName(), resource);
-                if (externalView != null) {
-                    externalViews.add(externalView);
-                }
-            }
-            onExternalViewChange(externalViews, null);
+            bootstrapRoutingTable(getExternalViews());
         }
     }
 
@@ -147,9 +139,9 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     public void send(Partition partition, String state, T message) {
         // Get addresses
         List<InetSocketAddress> addresses = new ArrayList<InetSocketAddress>();
-        synchronized (ipcAddresses) {
+        synchronized (routingTable) {
             for (String instance : getInstances(partition, state)) {
-                InetSocketAddress address = ipcAddresses.get(instance);
+                InetSocketAddress address = routingTable.get(instance);
                 if (address == null) {
                     throw new IllegalStateException("No actor address for target instance " + instance);
                 }
@@ -203,25 +195,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
     @Override
     public void onExternalViewChange(List<ExternalView> externalViewList, NotificationContext changeContext) {
-        synchronized (ipcAddresses) {
-            ipcAddresses.clear();
-            for (ExternalView externalView : externalViewList) {
-                Set<String> partitions = externalView.getPartitionSet();
-                if (partitions != null) {
-                    for (String partitionName : partitions) {
-                        for (Map.Entry<String, String> stateEntry : externalView.getStateMap(partitionName).entrySet()) {
-                            String instance = stateEntry.getKey();
-                            InstanceConfig config = manager.getClusterManagmentTool().getInstanceConfig(manager.getClusterName(), instance);
-                            String actorPort = config.getRecord().getSimpleField(ACTOR_PORT);
-                            if (actorPort != null) {
-                                String host = instance.substring(0, instance.lastIndexOf("_"));
-                                ipcAddresses.put(instance, new InetSocketAddress(host, Integer.parseInt(actorPort)));
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        bootstrapRoutingTable(externalViewList);
     }
 
     // Given a partition and its state, find all instances that are in that state currently
@@ -241,6 +215,42 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             }
         }
         return instances;
+    }
+
+    // Returns external views for all resources currently in cluster
+    private List<ExternalView> getExternalViews() {
+        List<String> resources = manager.getClusterManagmentTool().getResourcesInCluster(manager.getClusterName());
+        List<ExternalView> externalViews = new ArrayList<ExternalView>(resources.size());
+        for (String resource : resources) {
+            ExternalView externalView = manager.getClusterManagmentTool().getResourceExternalView(manager.getClusterName(), resource);
+            if (externalView != null) {
+                externalViews.add(externalView);
+            }
+        }
+        return externalViews;
+    }
+
+    // Extracts instance configs, finds actor port, and maps partition to that
+    private void bootstrapRoutingTable(List<ExternalView> externalViews) {
+        synchronized (routingTable) {
+            routingTable.clear();
+            for (ExternalView externalView : externalViews) {
+                Set<String> partitions = externalView.getPartitionSet();
+                if (partitions != null) {
+                    for (String partitionName : partitions) {
+                        for (Map.Entry<String, String> stateEntry : externalView.getStateMap(partitionName).entrySet()) {
+                            String instance = stateEntry.getKey();
+                            InstanceConfig config = manager.getClusterManagmentTool().getInstanceConfig(manager.getClusterName(), instance);
+                            String actorPort = config.getRecord().getSimpleField(ACTOR_PORT);
+                            if (actorPort != null) {
+                                String host = instance.substring(0, instance.lastIndexOf("_"));
+                                routingTable.put(instance, new InetSocketAddress(host, Integer.parseInt(actorPort)));
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Routes received messages to their respective callbacks
