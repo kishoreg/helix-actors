@@ -88,7 +88,7 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
 
     @Test
     public void testMessagePassing() throws Exception {
-        int numMessages = 100;
+        int numMessages = 1000;
 
         // Start first Actor w/ counter
         final ConcurrentMap<String, AtomicInteger> firstCounts = new ConcurrentHashMap<String, AtomicInteger>();
