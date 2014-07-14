@@ -32,10 +32,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *     This module accepts a typed {@link HelixActorMessageCodec}, which is used to serialize / deserialize
  *     message body.
  * </p>
- *
- * TODO: Add CRC32 for entire message body in 2nd header field. Compute this on message receive and compare.
- * Since we have size-related fields, goal here is to avoid running into OOM problems if corrupt messages are
- * received.
  */
 public class NettyHelixActor<T> implements HelixActor<T> {
 
@@ -253,16 +249,28 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
             // Partition name
             int nameSize = byteBuf.readInt();
+            if (nameSize > messageLength) {
+                throw new IllegalArgumentException(
+                        "nameSize=" + nameSize + " is greater than messageLength=" + messageLength);
+            }
             byte[] nameBytes = new byte[nameSize];
             byteBuf.readBytes(nameBytes);
 
             // Partition state
             int stateSize = byteBuf.readInt();
+            if (stateSize > messageLength) {
+                throw new IllegalArgumentException(
+                        "stateSize=" + stateSize + " is greater than messageLength=" + messageLength);
+            }
             byte[] stateBytes = new byte[stateSize];
             byteBuf.readBytes(stateBytes);
 
             // Message
             int messageBytesSize = byteBuf.readInt();
+            if (messageBytesSize > messageLength) {
+                throw new IllegalArgumentException(
+                        "messageBytesSize=" + messageBytesSize + " is greater than messageLength=" + messageLength);
+            }
             byte[] messageBytes = new byte[messageBytesSize];
             byteBuf.readBytes(messageBytes);
 
