@@ -3,6 +3,7 @@ package org.apache.helix.actor;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -13,6 +14,7 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.helix.*;
 import org.apache.helix.model.*;
 import org.apache.log4j.Logger;
+import org.restlet.engine.util.Pool;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -157,21 +159,16 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             }
         }
 
-        // Encode
-        byte[] partitionNameBytes = partition.getPartitionName().getBytes();
-        byte[] stateBytes = state.getBytes();
+        // Build message
         byte[] messageBytes = codec.encode(message);
-        int messageLength = 16 + partitionNameBytes.length + stateBytes.length + messageBytes.length;
-
-        // Encode and wrap message
-        ByteBuf byteBuf = Unpooled.wrappedBuffer(
-                ByteBuffer.allocate(4).putInt(messageLength).array(),
-                ByteBuffer.allocate(4).putInt(partitionNameBytes.length).array(),
-                partitionNameBytes,
-                ByteBuffer.allocate(4).putInt(state.length()).array(),
-                state.getBytes(),
-                ByteBuffer.allocate(4).putInt(messageBytes.length).array(),
-                messageBytes);
+        ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
+        byteBuf.writeInt(16 + partition.getPartitionName().length() + state.length() + messageBytes.length)
+               .writeInt(partition.getPartitionName().length())
+               .writeBytes(partition.getPartitionName().getBytes())
+               .writeInt(state.length())
+               .writeBytes(state.getBytes())
+               .writeInt(messageBytes.length)
+               .writeBytes(messageBytes);
 
         // Send message(s)
         for (final InetSocketAddress address : addresses) {
