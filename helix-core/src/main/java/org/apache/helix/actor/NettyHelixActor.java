@@ -57,9 +57,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
      | message (var)        |
      |                      |
      +----------------------+
+
+ TODO: Flesh out metadata (resource, cluster, target address)
+
+ TODO: target address can be used to toss away invalid messages after state transitions
+
+ TODO: Work across clusters?
+
+ TODO: Move implementation into a different module, but leave interface in core
+
  </pre>
  * </p>
  */
+// TODO: Use RoutingTableProvider
+// TODO: Hierarchy of callbacks for different scopes
 public class NettyHelixActor<T> implements HelixActor<T> {
 
     private static final Logger LOG = Logger.getLogger(NettyHelixActor.class);
@@ -158,6 +169,8 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     /**
      * Sends a message to all partitions with a given state in the cluster.
      */
+    // TODO: Should be cluster / resource addressable as well
+    // TODO: Make address builder thing to make this easy
     public void send(Partition partition, String state, T message) {
         // Get addresses
         List<InetSocketAddress> addresses = new ArrayList<InetSocketAddress>();
@@ -319,6 +332,9 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             final String partitionName = new String(nameBytes);
             final String state = new String(stateBytes);
             final T message = codec.decode(messageBytes);
+
+            // TODO: Error out if not hosting partition in that state?
+            // TODO: State transitions will affect message routing - how to deal with this?
 
             // Handle callback (don't block this handler b/c callback may be expensive)
             String resourceName = partitionName.substring(0, partitionName.lastIndexOf("_"));
