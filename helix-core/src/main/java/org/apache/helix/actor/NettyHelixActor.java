@@ -23,13 +23,12 @@ import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.InstanceConfig;
 import org.apache.helix.model.Partition;
 import org.apache.helix.model.builder.HelixConfigScopeBuilder;
+import org.apache.helix.spectator.RoutingTableProvider;
 import org.apache.log4j.Logger;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -85,11 +84,11 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
     private final AtomicBoolean isShutdown;
     private final ConcurrentMap<String, HelixActorCallback<T>> callbacks;
-    private final ConcurrentMap<String, InetSocketAddress> routingTable;
     private final ConcurrentMap<InetSocketAddress, Channel> channels;
     private final HelixManager manager;
     private final int port;
     private final HelixActorMessageCodec<T> codec;
+    private final RoutingTableProvider routingTableProvider;
 
     private EventLoopGroup eventLoopGroup;
     private Bootstrap clientBootstrap;
@@ -105,17 +104,17 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     public NettyHelixActor(HelixManager manager, int port, HelixActorMessageCodec<T> codec) {
         this.isShutdown = new AtomicBoolean(true);
         this.callbacks = new ConcurrentHashMap<String, HelixActorCallback<T>>();
-        this.routingTable = new ConcurrentHashMap<String, InetSocketAddress>();
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
         this.manager = manager;
         this.port = port;
         this.codec = codec;
+        this.routingTableProvider = new RoutingTableProvider();
     }
 
     /**
      * Starts message handling server, creates client bootstrap, and bootstraps partition routing table.
      */
-    public void start() {
+    public void start() throws Exception {
         if (isShutdown.getAndSet(false)) {
             eventLoopGroup = new NioEventLoopGroup();
 
@@ -124,6 +123,9 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                             .forCluster(manager.getClusterName())
                             .forParticipant(manager.getInstanceName())
                             .build(), ACTOR_PORT, String.valueOf(port));
+
+            manager.addExternalViewChangeListener(routingTableProvider);
+            manager.addInstanceConfigChangeListener(routingTableProvider);
 
             new ServerBootstrap()
                     .group(eventLoopGroup)
@@ -153,14 +155,14 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                     .handler(new NopInitializer());
 
             // Bootstrap routing table
-            bootstrapRoutingTable(getExternalViews());
+            routingTableProvider.onExternalViewChange(getExternalViews(), new NotificationContext(manager));
         }
     }
 
     /**
      * Shuts down event loops for message handling server and message passing client.
      */
-    public void shutdown() {
+    public void shutdown() throws Exception {
         if (!isShutdown.getAndSet(true)) {
             eventLoopGroup.shutdownGracefully();
         }
@@ -171,17 +173,16 @@ public class NettyHelixActor<T> implements HelixActor<T> {
      */
     // TODO: Should be cluster / resource addressable as well
     // TODO: Make address builder thing to make this easy
-    public void send(Partition partition, String state, T message) {
+    @Override
+    public void send(String resource, String partition, String state, T message) {
         // Get addresses
         List<InetSocketAddress> addresses = new ArrayList<InetSocketAddress>();
-        synchronized (routingTable) {
-            for (String instance : getInstances(partition, state)) {
-                InetSocketAddress address = routingTable.get(instance);
-                if (address == null) {
-                    throw new IllegalStateException("No actor address for target instance " + instance);
-                }
-                addresses.add(address);
+        for (InstanceConfig instanceConfig : routingTableProvider.getInstances(resource, partition, state)) {
+            String actorPort = instanceConfig.getRecord().getSimpleField(ACTOR_PORT);
+            if (actorPort == null) {
+                throw new IllegalStateException("No actor address registered for target instance " + instanceConfig.getInstanceName());
             }
+            addresses.add(new InetSocketAddress(instanceConfig.getHostName(), Integer.valueOf(actorPort)));
         }
 
         // Encode message
@@ -202,13 +203,13 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
                 // Build and send message
                 ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
-                byteBuf.writeInt(16 + partition.getPartitionName().length() + state.length() + messageBytes.length)
-                       .writeInt(partition.getPartitionName().length())
-                       .writeBytes(partition.getPartitionName().getBytes())
-                       .writeInt(state.length())
-                       .writeBytes(state.getBytes())
-                       .writeInt(messageBytes.length)
-                       .writeBytes(messageBytes);
+                byteBuf.writeInt(16 + partition.length() + state.length() + messageBytes.length)
+                        .writeInt(partition.length())
+                        .writeBytes(partition.getBytes())
+                        .writeInt(state.length())
+                        .writeBytes(state.getBytes())
+                        .writeInt(messageBytes.length)
+                        .writeBytes(messageBytes);
                 channel.writeAndFlush(byteBuf, channel.voidPromise()); // TODO: No flush to avoid syscall?
             } catch (Exception e) {
                 throw new IllegalStateException("Could not send message to " + partition + ":" + state, e);
@@ -228,35 +229,6 @@ public class NettyHelixActor<T> implements HelixActor<T> {
         callbacks.put(resource, callback);
     }
 
-    @Override
-    public void onExternalViewChange(List<ExternalView> externalViewList, NotificationContext changeContext) {
-        bootstrapRoutingTable(externalViewList);
-    }
-
-    @Override
-    public void onInstanceConfigChange(List<InstanceConfig> instanceConfigs, NotificationContext context) {
-        bootstrapRoutingTable(getExternalViews());
-    }
-
-    // Given a partition and its state, find all instances that are in that state currently
-    private List<String> getInstances(Partition partition, String state) {
-        List<String> instances = new ArrayList<String>();
-        String partitionName = partition.getPartitionName();
-        String resourceName = partitionName.substring(0, partitionName.lastIndexOf("_"));
-        ExternalView externalView = manager.getClusterManagmentTool().getResourceExternalView(manager.getClusterName(), resourceName);
-        if (externalView != null) {
-            Map<String, String> stateMap = externalView.getStateMap(partitionName);
-            if (stateMap != null) {
-                for (Map.Entry<String, String> stateEntry : stateMap.entrySet()) {
-                    if (stateEntry.getValue().equals(state)) {
-                        instances.add(stateEntry.getKey());
-                    }
-                }
-            }
-        }
-        return instances;
-    }
-
     // Returns external views for all resources currently in cluster
     private List<ExternalView> getExternalViews() {
         List<String> resources = manager.getClusterManagmentTool().getResourcesInCluster(manager.getClusterName());
@@ -268,29 +240,6 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             }
         }
         return externalViews;
-    }
-
-    // Extracts instance configs, finds actor port, and maps partition to that
-    private void bootstrapRoutingTable(List<ExternalView> externalViews) {
-        synchronized (routingTable) {
-            routingTable.clear();
-            for (ExternalView externalView : externalViews) {
-                Set<String> partitions = externalView.getPartitionSet();
-                if (partitions != null) {
-                    for (String partitionName : partitions) {
-                        for (Map.Entry<String, String> stateEntry : externalView.getStateMap(partitionName).entrySet()) {
-                            String instance = stateEntry.getKey();
-                            InstanceConfig config = manager.getClusterManagmentTool().getInstanceConfig(manager.getClusterName(), instance);
-                            String actorPort = config.getRecord().getSimpleField(ACTOR_PORT);
-                            if (actorPort != null) {
-                                String host = instance.substring(0, instance.lastIndexOf("_"));
-                                routingTable.put(instance, new InetSocketAddress(host, Integer.parseInt(actorPort)));
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 
     // Routes received messages to their respective callbacks

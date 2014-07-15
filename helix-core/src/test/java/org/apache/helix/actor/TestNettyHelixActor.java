@@ -2,7 +2,6 @@ package org.apache.helix.actor;
 
 import org.apache.helix.*;
 import org.apache.helix.controller.HelixControllerMain;
-import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.Message;
 import org.apache.helix.model.Partition;
@@ -99,8 +98,6 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
                 firstCounts.get(key).incrementAndGet();
             }
         });
-        firstNode.addExternalViewChangeListener(firstActor);
-        firstNode.addInstanceConfigChangeListener(firstActor);
         firstActor.start();
 
         // Start second Actor w/ counter
@@ -114,8 +111,6 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
                 secondCounts.get(key).incrementAndGet();
             }
         });
-        secondNode.addExternalViewChangeListener(secondActor);
-        secondNode.addInstanceConfigChangeListener(secondActor);
         secondActor.start();
 
         // Find all partitions on second node...
@@ -133,14 +128,14 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
         // And use first node to send messages to them
         for (String partitionName : secondPartitions) {
             for (int i = 0; i < numMessages; i++) {
-                firstActor.send(new Partition(partitionName), "ONLINE", "Hello world! " + i);
+                firstActor.send(RESOURCE_NAME, partitionName, "ONLINE", "Hello world! " + i);
             }
         }
 
         // Loopback
         for (String partitionName : secondPartitions) {
             for (int i = 0; i < numMessages; i++) {
-                secondActor.send(new Partition(partitionName), "ONLINE", "Hello world! " + i);
+                secondActor.send(RESOURCE_NAME, partitionName, "ONLINE", "Hello world! " + i);
             }
         }
 

@@ -32,13 +32,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.helix.ConfigChangeListener;
 import org.apache.helix.ExternalViewChangeListener;
 import org.apache.helix.HelixDataAccessor;
+import org.apache.helix.InstanceConfigChangeListener;
 import org.apache.helix.NotificationContext;
 import org.apache.helix.PropertyKey.Builder;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.InstanceConfig;
 import org.apache.log4j.Logger;
 
-public class RoutingTableProvider implements ExternalViewChangeListener, ConfigChangeListener {
+public class RoutingTableProvider implements ExternalViewChangeListener, ConfigChangeListener, InstanceConfigChangeListener {
   private static final Logger logger = Logger.getLogger(RoutingTableProvider.class);
   private final AtomicReference<RoutingTable> _routingTableRef;
 
@@ -120,7 +121,12 @@ public class RoutingTableProvider implements ExternalViewChangeListener, ConfigC
     refresh(externalViewList, changeContext);
   }
 
-  private void refresh(List<ExternalView> externalViewList, NotificationContext changeContext) {
+    @Override
+    public void onInstanceConfigChange(List<InstanceConfig> configs, NotificationContext changeContext) {
+        onConfigChange(configs, changeContext);
+    }
+
+    private void refresh(List<ExternalView> externalViewList, NotificationContext changeContext) {
     HelixDataAccessor accessor = changeContext.getManager().getHelixDataAccessor();
     Builder keyBuilder = accessor.keyBuilder();
 
