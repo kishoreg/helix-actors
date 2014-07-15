@@ -17,7 +17,6 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.helix.HelixManager;
-import org.apache.helix.HelixProperty;
 import org.apache.helix.NotificationContext;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.HelixConfigScope;
@@ -151,7 +150,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
      * Shuts down event loops for message handling server and message passing client.
      */
     public void shutdown() {
-        if (isShutdown.getAndSet(true)) {
+        if (!isShutdown.getAndSet(true)) {
             eventLoopGroup.shutdownGracefully();
         }
     }
