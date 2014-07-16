@@ -28,7 +28,9 @@ import org.apache.log4j.Logger;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -42,13 +44,25 @@ import java.util.concurrent.atomic.AtomicBoolean;
      +----------------------+
      | totalLength (4B)     |
      +----------------------+
-     | nameLength (4B)      |
+     | clusterLength (4B)   |
      +----------------------+
-     | name (var)           |
+     | cluster (var)        |
+     +----------------------+
+     | resourceLength (4B)  |
+     +----------------------+
+     | resource (var)       |
+     +----------------------+
+     | partitionLength (4B) |
+     +----------------------+
+     | partition (var)      |
      +----------------------+
      | stateLength (4B)     |
      +----------------------+
      | state (var)          |
+     +----------------------+
+     | instanceLength (4B)  |
+     +----------------------+
+     | instance (var)       |
      +----------------------+
      | messageLength (4B)   |
      +----------------------+
@@ -57,18 +71,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
      |                      |
      +----------------------+
 
- TODO: Flesh out metadata (resource, cluster, target address)
-
- TODO: target address can be used to toss away invalid messages after state transitions
-
- TODO: Work across clusters?
-
  TODO: Move implementation into a different module, but leave interface in core
 
  </pre>
  * </p>
  */
-// TODO: Use RoutingTableProvider
 // TODO: Hierarchy of callbacks for different scopes
 public class NettyHelixActor<T> implements HelixActor<T> {
 
@@ -81,6 +88,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     private static final int LENGTH_FIELD_LENGTH = 4;
     private static final int LENGTH_ADJUSTMENT = -4;
     private static final int INITIAL_BYTES_TO_STRIP = 0;
+    private static final int NUM_LENGTH_FIELDS = 7;
 
     private final AtomicBoolean isShutdown;
     private final ConcurrentMap<String, HelixActorCallback<T>> callbacks;
@@ -171,45 +179,63 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     /**
      * Sends a message to all partitions with a given state in the cluster.
      */
-    // TODO: Should be cluster / resource addressable as well
     // TODO: Make address builder thing to make this easy
     @Override
     public void send(String resource, String partition, String state, T message) {
         // Get addresses
-        List<InetSocketAddress> addresses = new ArrayList<InetSocketAddress>();
+        Map<String, InetSocketAddress> addresses = new HashMap<String, InetSocketAddress>();
         for (InstanceConfig instanceConfig : routingTableProvider.getInstances(resource, partition, state)) {
             String actorPort = instanceConfig.getRecord().getSimpleField(ACTOR_PORT);
             if (actorPort == null) {
                 throw new IllegalStateException("No actor address registered for target instance " + instanceConfig.getInstanceName());
             }
-            addresses.add(new InetSocketAddress(instanceConfig.getHostName(), Integer.valueOf(actorPort)));
+            addresses.put(instanceConfig.getInstanceName(), new InetSocketAddress(instanceConfig.getHostName(), Integer.valueOf(actorPort)));
         }
 
         // Encode message
         byte[] messageBytes = codec.encode(message);
+        byte[] clusterBytes = manager.getClusterName().getBytes();
 
         // Send message(s)
-        for (final InetSocketAddress address : addresses) {
+        for (Map.Entry<String, InetSocketAddress> entry : addresses.entrySet()) {
             try {
                 // Get a channel (lazily connect)
                 Channel channel = null;
                 synchronized (channels) {
-                    channel = channels.get(address);
+                    channel = channels.get(entry.getValue());
                     if (channel == null || !channel.isOpen()) {
-                        channel = clientBootstrap.connect(address).sync().channel();
-                        channels.put(address, channel);
+                        channel = clientBootstrap.connect(entry.getValue()).sync().channel();
+                        channels.put(entry.getValue(), channel);
                     }
                 }
 
+                byte[] resourceBytes = resource.getBytes();
+                byte[] partitionBytes = partition.getBytes();
+                byte[] stateBytes = state.getBytes();
+                byte[] instanceBytes = entry.getKey().getBytes();
+                int totalLength = NUM_LENGTH_FIELDS * (Integer.SIZE / 8)
+                        + clusterBytes.length
+                        + resourceBytes.length
+                        + partitionBytes.length
+                        + stateBytes.length
+                        + instanceBytes.length
+                        + messageBytes.length;
+
                 // Build and send message
                 ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
-                byteBuf.writeInt(16 + partition.length() + state.length() + messageBytes.length)
-                        .writeInt(partition.length())
-                        .writeBytes(partition.getBytes())
-                        .writeInt(state.length())
-                        .writeBytes(state.getBytes())
-                        .writeInt(messageBytes.length)
-                        .writeBytes(messageBytes);
+                byteBuf.writeInt(totalLength)
+                       .writeInt(clusterBytes.length)
+                       .writeBytes(clusterBytes)
+                       .writeInt(resourceBytes.length)
+                       .writeBytes(resourceBytes)
+                       .writeInt(partitionBytes.length)
+                       .writeBytes(partitionBytes)
+                       .writeInt(stateBytes.length)
+                       .writeBytes(stateBytes)
+                       .writeInt(instanceBytes.length)
+                       .writeBytes(instanceBytes)
+                       .writeInt(messageBytes.length)
+                       .writeBytes(messageBytes);
                 channel.writeAndFlush(byteBuf, channel.voidPromise()); // TODO: No flush to avoid syscall?
             } catch (Exception e) {
                 throw new IllegalStateException("Could not send message to " + partition + ":" + state, e);
@@ -250,16 +276,34 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             // Message length
             int messageLength = byteBuf.readInt();
 
-            // Partition name
-            int nameSize = byteBuf.readInt();
-            if (nameSize > messageLength) {
+            // Cluster
+            int clusterSize = byteBuf.readInt();
+            if (clusterSize > messageLength) {
                 throw new IllegalArgumentException(
-                        "nameSize=" + nameSize + " is greater than messageLength=" + messageLength);
+                        "nameSize=" + clusterSize + " is greater than messageLength=" + messageLength);
             }
-            byte[] nameBytes = new byte[nameSize];
-            byteBuf.readBytes(nameBytes);
+            byte[] clusterBytes = new byte[clusterSize];
+            byteBuf.readBytes(clusterBytes);
 
-            // Partition state
+            // Resource
+            int resourceSize = byteBuf.readInt();
+            if (resourceSize > messageLength) {
+                throw new IllegalArgumentException(
+                        "nameSize=" + resourceSize + " is greater than messageLength=" + messageLength);
+            }
+            byte[] resourceBytes = new byte[resourceSize];
+            byteBuf.readBytes(resourceBytes);
+
+            // Partition
+            int partitionSize = byteBuf.readInt();
+            if (partitionSize > messageLength) {
+                throw new IllegalArgumentException(
+                        "nameSize=" + partitionSize + " is greater than messageLength=" + messageLength);
+            }
+            byte[] partitionBytes = new byte[partitionSize];
+            byteBuf.readBytes(partitionBytes);
+
+            // State
             int stateSize = byteBuf.readInt();
             if (stateSize > messageLength) {
                 throw new IllegalArgumentException(
@@ -267,6 +311,15 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             }
             byte[] stateBytes = new byte[stateSize];
             byteBuf.readBytes(stateBytes);
+
+            // Instance
+            int instanceSize = byteBuf.readInt();
+            if (instanceSize > messageLength) {
+                throw new IllegalArgumentException(
+                        "instanceSize=" + instanceSize + " is greater than messageLength=" + messageLength);
+            }
+            byte[] instanceBytes = new byte[instanceSize];
+            byteBuf.readBytes(instanceBytes);
 
             // Message
             int messageBytesSize = byteBuf.readInt();
@@ -278,25 +331,27 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             byteBuf.readBytes(messageBytes);
 
             // Parse
-            final String partitionName = new String(nameBytes);
+            final String partitionName = new String(partitionBytes);
             final String state = new String(stateBytes);
+            final String instanceName = new String(instanceBytes);
             final T message = codec.decode(messageBytes);
 
-            // TODO: Error out if not hosting partition in that state?
-            // TODO: State transitions will affect message routing - how to deal with this?
-
             // Handle callback (don't block this handler b/c callback may be expensive)
-            String resourceName = partitionName.substring(0, partitionName.lastIndexOf("_"));
-            final HelixActorCallback<T> callback = callbacks.get(resourceName);
-            if (callback == null) {
-                throw new IllegalStateException("No callback registered for resource " + resourceName);
-            }
-            ctx.channel().eventLoop().submit(new Runnable() {
-                @Override
-                public void run() {
-                    callback.onMessage(new Partition(partitionName), state, message);
+            if (instanceName.equals(manager.getInstanceName())) {
+                String resourceName = partitionName.substring(0, partitionName.lastIndexOf("_"));
+                final HelixActorCallback<T> callback = callbacks.get(resourceName);
+                if (callback == null) {
+                    throw new IllegalStateException("No callback registered for resource " + resourceName);
                 }
-            });
+                ctx.channel().eventLoop().submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onMessage(new Partition(partitionName), state, message);
+                    }
+                });
+            } else {
+                LOG.warn("Received message addressed to " + instanceName + " which is not this instance");
+            }
 
             // Done with those
             byteBuf.discardReadBytes();
