@@ -1,8 +1,5 @@
 package org.apache.helix.actor;
 
-import org.apache.helix.ExternalViewChangeListener;
-import org.apache.helix.InstanceConfigChangeListener;
-
 /**
  * A message passing actor that lives on a Helix instance.
  *
