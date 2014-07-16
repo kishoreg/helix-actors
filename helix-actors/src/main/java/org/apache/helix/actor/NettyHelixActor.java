@@ -71,8 +71,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
      |                      |
      +----------------------+
 
- TODO: Move implementation into a different module, but leave interface in core
-
  </pre>
  * </p>
  */
