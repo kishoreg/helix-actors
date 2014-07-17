@@ -334,19 +334,14 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             final String instanceName = new String(instanceBytes);
             final T message = codec.decode(messageBytes);
 
-            // Handle callback (don't block this handler b/c callback may be expensive)
+            // Handle callback (must be in this handler to preserve ordering)
             if (instanceName.equals(manager.getInstanceName())) {
                 String resourceName = partitionName.substring(0, partitionName.lastIndexOf("_"));
                 final HelixActorCallback<T> callback = callbacks.get(resourceName);
                 if (callback == null) {
                     throw new IllegalStateException("No callback registered for resource " + resourceName);
                 }
-                ctx.channel().eventLoop().submit(new Runnable() {
-                    @Override
-                    public void run() {
-                        callback.onMessage(new Partition(partitionName), state, message);
-                    }
-                });
+                callback.onMessage(new Partition(partitionName), state, message);
             } else {
                 LOG.warn("Received message addressed to " + instanceName + " which is not this instance");
             }
