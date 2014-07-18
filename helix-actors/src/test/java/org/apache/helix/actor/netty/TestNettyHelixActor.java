@@ -1,5 +1,7 @@
 package org.apache.helix.actor.netty;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.apache.helix.HelixManager;
 import org.apache.helix.HelixManagerFactory;
 import org.apache.helix.InstanceType;
@@ -37,13 +39,15 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
     private static final String RESOURCE_NAME = "MyResource";
     private static final HelixActorMessageCodec<String> CODEC = new HelixActorMessageCodec<String>() {
         @Override
-        public byte[] encode(String message) {
-            return message.getBytes();
+        public ByteBuf encode(String message) {
+            return Unpooled.wrappedBuffer(message.getBytes());
         }
 
         @Override
-        public String decode(byte[] message) {
-            return new String(message);
+        public String decode(ByteBuf message) {
+            byte[] bytes = new byte[message.readableBytes()]; // n.b. this is bad
+            message.readBytes(bytes);
+            return new String(bytes);
         }
     };
 

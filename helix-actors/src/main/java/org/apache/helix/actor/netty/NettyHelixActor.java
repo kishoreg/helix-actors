@@ -201,7 +201,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
 
         // Encode message
-        byte[] messageBytes = codec.encode(message);
+        ByteBuf messageByteBuf = codec.encode(message);
         byte[] clusterBytes = manager.getClusterName().getBytes();
 
         // Send message(s)
@@ -233,7 +233,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                         + partitionBytes.length
                         + stateBytes.length
                         + instanceBytes.length
-                        + messageBytes.length;
+                        + messageByteBuf.readableBytes();
 
                 // Build message header
                 ByteBuf headerBuf = PooledByteBufAllocator.DEFAULT.buffer();
@@ -250,12 +250,12 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                        .writeBytes(stateBytes)
                        .writeInt(instanceBytes.length)
                        .writeBytes(instanceBytes)
-                       .writeInt(messageBytes.length);
+                       .writeInt(messageByteBuf.readableBytes());
 
                 // Compose message header and payload
                 CompositeByteBuf fullByteBuf = new CompositeByteBuf(PooledByteBufAllocator.DEFAULT, false, 2);
                 fullByteBuf.addComponent(headerBuf);
-                fullByteBuf.addComponent(Unpooled.wrappedBuffer(messageBytes)); // TODO: message could be ByteBuf
+                fullByteBuf.addComponent(messageByteBuf);
                 fullByteBuf.writerIndex(totalLength);
 
                 // Send
@@ -355,8 +355,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                 throw new IllegalArgumentException(
                         "messageBytesSize=" + messageBytesSize + " is greater than messageLength=" + messageLength);
             }
-            byte[] messageBytes = new byte[messageBytesSize];
-            byteBuf.readBytes(messageBytes);
+            ByteBuf messageBytes = byteBuf.slice(byteBuf.readerIndex(), messageBytesSize);
 
             // Parse
             final String partitionName = new String(partitionBytes);
