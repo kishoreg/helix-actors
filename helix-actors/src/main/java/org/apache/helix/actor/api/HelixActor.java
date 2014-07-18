@@ -16,6 +16,6 @@ import java.util.UUID;
 public interface HelixActor<T> {
     void start() throws Exception;
     void shutdown() throws Exception;
-    Set<UUID> send(String resource, String partition, String state, T message);
+    int send(String resource, String partition, String state, UUID messageId, T message);
     void register(String resource, HelixActorCallback<T> callback);
 }

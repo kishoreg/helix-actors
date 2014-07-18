@@ -188,7 +188,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
      * Sends a message to all partitions with a given state in the cluster.
      */
     @Override
-    public Set<UUID> send(String resource, String partition, String state, T message) {
+    public int send(String resource, String partition, String state, UUID messageId, T message) {
         // Get addresses
         Map<String, InetSocketAddress> addresses = new HashMap<String, InetSocketAddress>();
         for (InstanceConfig instanceConfig : routingTableProvider.getInstances(resource, partition, state)) {
@@ -205,7 +205,6 @@ public class NettyHelixActor<T> implements HelixActor<T> {
         byte[] clusterBytes = manager.getClusterName().getBytes();
 
         // Send message(s)
-        Set<UUID> messageIds = new HashSet<UUID>(addresses.size());
         for (Map.Entry<String, InetSocketAddress> entry : addresses.entrySet()) {
             try {
                 // Get a channel (lazily connect)
@@ -217,10 +216,6 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                         channels.put(entry.getValue(), channel);
                     }
                 }
-
-                // Generate message ID
-                UUID messageId = UUID.randomUUID();
-                messageIds.add(messageId);
 
                 byte[] resourceBytes = resource.getBytes();
                 byte[] partitionBytes = partition.getBytes();
@@ -265,7 +260,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             }
         }
 
-        return messageIds;
+        return addresses.size();
     }
 
     /**
