@@ -30,6 +30,8 @@ import org.apache.helix.model.builder.HelixConfigScopeBuilder;
 import org.apache.helix.spectator.RoutingTableProvider;
 import org.apache.log4j.Logger;
 
+import javax.management.ObjectName;
+import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -134,6 +136,10 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
             stats = new NettyHelixActorStats(eventLoopGroup);
             stats.start();
+
+            ManagementFactory.getPlatformMBeanServer()
+                    .registerMBean(stats, new ObjectName(
+                            "org.apache.helix:type=NettyHelixActorStats,name=" + manager.getInstanceName()));
 
             manager.getConfigAccessor().set(
                     new HelixConfigScopeBuilder(HelixConfigScope.ConfigScopeProperty.PARTICIPANT)
