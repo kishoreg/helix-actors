@@ -3,7 +3,7 @@ package org.apache.helix.actor.api;
 import io.netty.buffer.ByteBuf;
 
 /**
- * Encodes and decodes messages of type T
+ * Encodes and decodes messages of type T to and from {@link io.netty.buffer.ByteBuf}s
  */
 public interface HelixActorMessageCodec<T> {
     /**
@@ -15,6 +15,14 @@ public interface HelixActorMessageCodec<T> {
      *     reclaimed, call {@link io.netty.buffer.ByteBuf#retain()} before
      *     returning it.
      * </p>
+     *
+     * <p>
+     *     N.b. This does not necessarily need to generate a new ByteBuf.
+     *     Existing ByteBufs from a Netty pipeline may be used, for example.
+     * </p>
+     *
+     * @see io.netty.buffer.ByteBuf#slice()
+     * @see io.netty.buffer.CompositeByteBuf
      */
     ByteBuf encode(T message);
 
