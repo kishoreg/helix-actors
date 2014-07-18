@@ -1,5 +1,8 @@
 package org.apache.helix.actor.api;
 
+import java.util.Set;
+import java.util.UUID;
+
 /**
  * A message passing actor that lives on a Helix instance.
  *
@@ -13,6 +16,6 @@ package org.apache.helix.actor.api;
 public interface HelixActor<T> {
     void start() throws Exception;
     void shutdown() throws Exception;
-    void send(String resource, String partition, String state, T message);
+    Set<UUID> send(String resource, String partition, String state, T message);
     void register(String resource, HelixActorCallback<T> callback);
 }

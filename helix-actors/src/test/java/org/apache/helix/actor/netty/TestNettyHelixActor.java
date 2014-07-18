@@ -8,7 +8,6 @@ import org.apache.helix.TestHelper;
 import org.apache.helix.ZkUnitTestBase;
 import org.apache.helix.actor.api.HelixActorCallback;
 import org.apache.helix.actor.api.HelixActorMessageCodec;
-import org.apache.helix.actor.netty.NettyHelixActor;
 import org.apache.helix.controller.HelixControllerMain;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.Message;

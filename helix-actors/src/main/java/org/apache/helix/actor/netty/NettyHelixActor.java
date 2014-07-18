@@ -32,8 +32,10 @@ import org.apache.log4j.Logger;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -185,7 +187,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
      */
     // TODO: Make address builder thing to make this easy
     @Override
-    public void send(String resource, String partition, String state, T message) {
+    public Set<UUID> send(String resource, String partition, String state, T message) {
         // Get addresses
         Map<String, InetSocketAddress> addresses = new HashMap<String, InetSocketAddress>();
         for (InstanceConfig instanceConfig : routingTableProvider.getInstances(resource, partition, state)) {
@@ -196,14 +198,13 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             addresses.put(instanceConfig.getInstanceName(), new InetSocketAddress(instanceConfig.getHostName(), Integer.valueOf(actorPort)));
         }
 
-        // Generate message ID
-        UUID messageId = UUID.randomUUID();
 
         // Encode message
         byte[] messageBytes = codec.encode(message);
         byte[] clusterBytes = manager.getClusterName().getBytes();
 
         // Send message(s)
+        Set<UUID> messageIds = new HashSet<UUID>(addresses.size());
         for (Map.Entry<String, InetSocketAddress> entry : addresses.entrySet()) {
             try {
                 // Get a channel (lazily connect)
@@ -215,6 +216,10 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                         channels.put(entry.getValue(), channel);
                     }
                 }
+
+                // Generate message ID
+                UUID messageId = UUID.randomUUID();
+                messageIds.add(messageId);
 
                 byte[] resourceBytes = resource.getBytes();
                 byte[] partitionBytes = partition.getBytes();
@@ -253,6 +258,8 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                 throw new IllegalStateException("Could not send message to " + partition + ":" + state, e);
             }
         }
+
+        return messageIds;
     }
 
     /**
