@@ -27,6 +27,7 @@ import org.testng.annotations.Test;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -100,7 +101,7 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
         NettyHelixActor<String> firstActor = new NettyHelixActor<String>(firstNode, firstPort, CODEC);
         firstActor.register(RESOURCE_NAME, new HelixActorCallback<String>() {
             @Override
-            public void onMessage(Partition partition, String state, String message) {
+            public void onMessage(Partition partition, String state, UUID messageId, String message) {
                 String key = partition.getPartitionName() + ":" + state;
                 firstCounts.putIfAbsent(key, new AtomicInteger());
                 firstCounts.get(key).incrementAndGet();
@@ -113,7 +114,7 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
         NettyHelixActor<String> secondActor = new NettyHelixActor<String>(secondNode, secondPort, CODEC);
         secondActor.register(RESOURCE_NAME, new HelixActorCallback<String>() {
             @Override
-            public void onMessage(Partition partition, String state, String message) {
+            public void onMessage(Partition partition, String state, UUID messageId, String message) {
                 String key = partition.getPartitionName() + ":" + state;
                 secondCounts.putIfAbsent(key, new AtomicInteger());
                 secondCounts.get(key).incrementAndGet();

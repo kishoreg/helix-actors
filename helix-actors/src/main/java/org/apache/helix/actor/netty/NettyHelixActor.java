@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -46,6 +47,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  <pre>
      +----------------------+
      | totalLength (4B)     |
+     +----------------------+
+     | messageId (16B)      |
      +----------------------+
      | clusterLength (4B)   |
      +----------------------+
@@ -193,6 +196,9 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             addresses.put(instanceConfig.getInstanceName(), new InetSocketAddress(instanceConfig.getHostName(), Integer.valueOf(actorPort)));
         }
 
+        // Generate message ID
+        UUID messageId = UUID.randomUUID();
+
         // Encode message
         byte[] messageBytes = codec.encode(message);
         byte[] clusterBytes = manager.getClusterName().getBytes();
@@ -215,6 +221,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                 byte[] stateBytes = state.getBytes();
                 byte[] instanceBytes = entry.getKey().getBytes();
                 int totalLength = NUM_LENGTH_FIELDS * (Integer.SIZE / 8)
+                        + (Long.SIZE / 8) * 2 // 128 bit UUID
                         + clusterBytes.length
                         + resourceBytes.length
                         + partitionBytes.length
@@ -227,6 +234,8 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                 // TODO: If they give us a ByteBuf, we just create a composite ByteBuf w/ header ByteBuf we do here
                 ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
                 byteBuf.writeInt(totalLength)
+                       .writeLong(messageId.getMostSignificantBits())
+                       .writeLong(messageId.getLeastSignificantBits())
                        .writeInt(clusterBytes.length)
                        .writeBytes(clusterBytes)
                        .writeInt(resourceBytes.length)
@@ -278,6 +287,9 @@ public class NettyHelixActor<T> implements HelixActor<T> {
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf byteBuf) throws Exception {
             // Message length
             int messageLength = byteBuf.readInt();
+
+            // Message ID
+            UUID messageId = new UUID(byteBuf.readLong(), byteBuf.readLong());
 
             // Cluster
             int clusterSize = byteBuf.readInt();
@@ -346,7 +358,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                 if (callback == null) {
                     throw new IllegalStateException("No callback registered for resource " + resourceName);
                 }
-                callback.onMessage(new Partition(partitionName), state, message);
+                callback.onMessage(new Partition(partitionName), state, messageId, message);
             } else {
                 LOG.warn("Received message addressed to " + instanceName + " which is not this instance");
             }
