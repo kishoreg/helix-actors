@@ -10,6 +10,7 @@ import org.apache.helix.TestHelper;
 import org.apache.helix.ZkUnitTestBase;
 import org.apache.helix.actor.api.HelixActorCallback;
 import org.apache.helix.actor.api.HelixActorMessageCodec;
+import org.apache.helix.actor.api.HelixActorScope;
 import org.apache.helix.controller.HelixControllerMain;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.Message;
@@ -102,10 +103,10 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
         // Start first Actor w/ counter
         final ConcurrentMap<String, AtomicInteger> firstCounts = new ConcurrentHashMap<String, AtomicInteger>();
         NettyHelixActor<String> firstActor = new NettyHelixActor<String>(firstNode, firstPort, CODEC);
-        firstActor.register(RESOURCE_NAME, new HelixActorCallback<String>() {
+        firstActor.register(new HelixActorCallback<String>() {
             @Override
-            public void onMessage(Partition partition, String state, UUID messageId, String message) {
-                String key = partition.getPartitionName() + ":" + state;
+            public void onMessage(HelixActorScope scope, UUID messageId, String message) {
+                String key = scope.getPartition() + ":" + scope.getState();
                 firstCounts.putIfAbsent(key, new AtomicInteger());
                 firstCounts.get(key).incrementAndGet();
             }
@@ -115,10 +116,10 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
         // Start second Actor w/ counter
         final ConcurrentMap<String, AtomicInteger> secondCounts = new ConcurrentHashMap<String, AtomicInteger>();
         NettyHelixActor<String> secondActor = new NettyHelixActor<String>(secondNode, secondPort, CODEC);
-        secondActor.register(RESOURCE_NAME, new HelixActorCallback<String>() {
+        secondActor.register(new HelixActorCallback<String>() {
             @Override
-            public void onMessage(Partition partition, String state, UUID messageId, String message) {
-                String key = partition.getPartitionName() + ":" + state;
+            public void onMessage(HelixActorScope scope, UUID messageId, String message) {
+                String key = scope.getPartition() + ":" + scope.getState();
                 secondCounts.putIfAbsent(key, new AtomicInteger());
                 secondCounts.get(key).incrementAndGet();
             }

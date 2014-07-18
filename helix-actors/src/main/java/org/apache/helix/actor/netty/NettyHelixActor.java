@@ -22,6 +22,7 @@ import org.apache.helix.NotificationContext;
 import org.apache.helix.actor.api.HelixActor;
 import org.apache.helix.actor.api.HelixActorCallback;
 import org.apache.helix.actor.api.HelixActorMessageCodec;
+import org.apache.helix.actor.api.HelixActorScope;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.InstanceConfig;
@@ -41,6 +42,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Provides partition/state-level messaging among nodes in a Helix cluster.
@@ -98,12 +100,12 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     private static final int NUM_LENGTH_FIELDS = 7;
 
     private final AtomicBoolean isShutdown;
-    private final ConcurrentMap<String, HelixActorCallback<T>> callbacks;
     private final ConcurrentMap<InetSocketAddress, Channel> channels;
     private final HelixManager manager;
     private final int port;
     private final HelixActorMessageCodec<T> codec;
     private final RoutingTableProvider routingTableProvider;
+    private final AtomicReference<HelixActorCallback<T>> callback;
 
     private EventLoopGroup eventLoopGroup;
     private Bootstrap clientBootstrap;
@@ -119,12 +121,12 @@ public class NettyHelixActor<T> implements HelixActor<T> {
      */
     public NettyHelixActor(HelixManager manager, int port, HelixActorMessageCodec<T> codec) {
         this.isShutdown = new AtomicBoolean(true);
-        this.callbacks = new ConcurrentHashMap<String, HelixActorCallback<T>>();
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
         this.manager = manager;
         this.port = port;
         this.codec = codec;
         this.routingTableProvider = new RoutingTableProvider();
+        this.callback = new AtomicReference<HelixActorCallback<T>>();
     }
 
     /**
@@ -276,15 +278,14 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     }
 
     /**
-     * Register a callback which is called when this node receives a message for any partition/state of a resource.
-     *
-     * <p>
-     *     Only one callback may be registerd per resource. A subsequent call to this method results in the most
-     *     recently supplied callback being the one that's registered.
-     * </p>
+     * Register a callback which is called when this node receives a message.
      */
-    public void register(String resource, HelixActorCallback<T> callback) {
-        callbacks.put(resource, callback);
+    @Override
+    public void register(HelixActorCallback<T> callback) {
+        if (!isShutdown.get()) {
+            throw new IllegalStateException("Cannot register callback after started");
+        }
+        this.callback.set(callback);
     }
 
     // Returns external views for all resources currently in cluster
@@ -365,6 +366,8 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             ByteBuf messageBytes = byteBuf.slice(byteBuf.readerIndex(), messageBytesSize);
 
             // Parse
+            final String clusterName = new String(clusterBytes);
+            final String resourceName = new String(resourceBytes);
             final String partitionName = new String(partitionBytes);
             final String state = new String(stateBytes);
             final String instanceName = new String(instanceBytes);
@@ -372,12 +375,11 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
             // Handle callback (must be in this handler to preserve ordering)
             if (instanceName.equals(manager.getInstanceName())) {
-                String resourceName = partitionName.substring(0, partitionName.lastIndexOf("_"));
-                final HelixActorCallback<T> callback = callbacks.get(resourceName);
-                if (callback == null) {
-                    throw new IllegalStateException("No callback registered for resource " + resourceName);
+                if (callback.get() == null) {
+                    throw new IllegalStateException("No callback registered");
                 }
-                callback.onMessage(new Partition(partitionName), state, messageId, message);
+                callback.get().onMessage(
+                        new HelixActorScope(clusterName, resourceName, partitionName, state), messageId, message);
             } else {
                 LOG.warn("Received message addressed to " + instanceName + " which is not this instance");
             }

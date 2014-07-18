@@ -30,11 +30,11 @@ public interface HelixActor<T> {
     int send(String resource, String partition, String state, UUID messageId, T message);
 
     /**
-     * Register a callback for a resource.
+     * Register a callback.
      *
      * <p>
-     *     The last callback that is registered is the one that gets called.
+     *     Should be called before start.
      * </p>
      */
-    void register(String resource, HelixActorCallback<T> callback);
+    void register(HelixActorCallback<T> callback);
 }

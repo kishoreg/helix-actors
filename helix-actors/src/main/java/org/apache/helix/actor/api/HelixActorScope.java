@@ -6,6 +6,15 @@ public class HelixActorScope {
     private String partition;
     private String state;
 
+    public HelixActorScope() {}
+
+    public HelixActorScope(String cluster, String resource, String partition, String state) {
+        this.cluster = cluster;
+        this.resource = resource;
+        this.partition = partition;
+        this.state = state;
+    }
+
     public String getCluster() { return cluster; }
     public String getResource() { return resource; }
     public String getPartition() { return partition; }
