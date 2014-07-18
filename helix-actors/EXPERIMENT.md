@@ -44,3 +44,19 @@ saturated network means gigabit of data sent.
 (eat1-app87.corp.linkedin.com)
 
 * 24-core Intel(R) Xeon(R) CPU E5645  @ 2.40GHz
+
+Process
+-------
+
+A resource with 16 partitions will be created on a cluster with two participants.
+
+First, we generate a set of randomly-sized strings. These remain fixed over the
+course of the experiment in order to avoid overheads caused by garbage
+collecting the messages. We just wrap them in ByteBuf objects in our codec.
+
+Next, we write a driver that lives in each participant, which continually
+selects one of these strings and sends it to a randomly selected partition.
+Note that this randomly selected partition may live on either participant.
+
+We run this configuration for a fixed period of time, while collecting logs and
+metrics.
