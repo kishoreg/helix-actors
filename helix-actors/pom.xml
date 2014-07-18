@@ -112,54 +112,6 @@ under the License.
         <artifactId>appassembler-maven-plugin</artifactId>
         <configuration>
           <programs>
-            <program>
-              <mainClass>org.apache.helix.controller.HelixControllerMain</mainClass>
-              <name>run-helix-controller</name>
-            </program>
-            <program>
-              <mainClass>org.apache.helix.tools.ClusterSetup</mainClass>
-              <name>helix-admin</name>
-            </program>
-            <program>
-              <mainClass>org.apache.helix.tools.ZKDumper</mainClass>
-              <name>zk-dumper</name>
-            </program>
-            <program>
-              <mainClass>org.apache.helix.tools.ZKLogFormatter</mainClass>
-              <name>zk-log-parser</name>
-            </program>
-            <program>
-              <mainClass>org.apache.helix.tools.ZkLogCSVFormatter</mainClass>
-              <name>zk-log-csv-formatter</name>
-            </program>
-            <program>
-              <mainClass>org.apache.helix.examples.ExampleProcess</mainClass>
-              <name>start-helix-participant</name>
-            </program>
-            <program>
-              <mainClass>org.apache.helix.tools.LocalZKServer</mainClass>
-              <name>start-standalone-zookeeper</name>
-            </program>
-            <program>
-              <mainClass>org.apache.helix.examples.Quickstart</mainClass>
-              <name>quickstart</name>
-            </program>
-            <program>
-              <mainClass>org.apache.helix.tools.JmxDumper</mainClass>
-              <name>JmxDumper</name>
-            </program>
-            <program>
-              <mainClass>org.apache.helix.tools.YAMLClusterSetup</mainClass>
-              <name>yaml-cluster-setup</name>
-            </program>
-            <program>
-              <mainClass>org.apache.helix.tools.IntegrationTestUtil</mainClass>
-              <name>test-util</name>
-            </program>
-            <program>
-              <mainClass>org.apache.helix.tools.ZkGrep</mainClass>
-              <name>zkgrep</name>
-            </program>
           </programs>
         </configuration>
       </plugin>
