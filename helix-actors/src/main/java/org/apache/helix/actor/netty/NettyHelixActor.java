@@ -1,4 +1,4 @@
-package org.apache.helix.actor;
+package org.apache.helix.actor.netty;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -18,6 +18,9 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.helix.HelixManager;
 import org.apache.helix.NotificationContext;
+import org.apache.helix.actor.api.HelixActor;
+import org.apache.helix.actor.api.HelixActorCallback;
+import org.apache.helix.actor.api.HelixActorMessageCodec;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.InstanceConfig;
@@ -220,6 +223,8 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                         + messageBytes.length;
 
                 // Build and send message
+                // TODO: We should wrap messageBytes to avoid another copy
+                // TODO: If they give us a ByteBuf, we just create a composite ByteBuf w/ header ByteBuf we do here
                 ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
                 byteBuf.writeInt(totalLength)
                        .writeInt(clusterBytes.length)

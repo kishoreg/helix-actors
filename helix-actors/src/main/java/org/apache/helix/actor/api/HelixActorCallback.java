@@ -1,4 +1,4 @@
-package org.apache.helix.actor;
+package org.apache.helix.actor.api;
 
 import org.apache.helix.model.Partition;
 

@@ -1,4 +1,4 @@
-package org.apache.helix.actor;
+package org.apache.helix.actor.api;
 
 /**
  * A message passing actor that lives on a Helix instance.
