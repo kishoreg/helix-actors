@@ -375,9 +375,6 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             } else {
                 LOG.warn("Received message addressed to " + instanceName + " which is not this instance");
             }
-
-            // Done with those
-            byteBuf.discardReadBytes();
         }
 
         @Override
