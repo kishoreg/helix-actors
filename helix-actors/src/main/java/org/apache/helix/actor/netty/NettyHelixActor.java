@@ -3,7 +3,9 @@ package org.apache.helix.actor.netty;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -185,7 +187,6 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     /**
      * Sends a message to all partitions with a given state in the cluster.
      */
-    // TODO: Make address builder thing to make this easy
     @Override
     public Set<UUID> send(String resource, String partition, String state, T message) {
         // Get addresses
@@ -234,11 +235,9 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                         + instanceBytes.length
                         + messageBytes.length;
 
-                // Build and send message
-                // TODO: We should wrap messageBytes to avoid another copy
-                // TODO: If they give us a ByteBuf, we just create a composite ByteBuf w/ header ByteBuf we do here
-                ByteBuf byteBuf = PooledByteBufAllocator.DEFAULT.buffer();
-                byteBuf.writeInt(totalLength)
+                // Build message header
+                ByteBuf headerBuf = PooledByteBufAllocator.DEFAULT.buffer();
+                headerBuf.writeInt(totalLength)
                        .writeLong(messageId.getMostSignificantBits())
                        .writeLong(messageId.getLeastSignificantBits())
                        .writeInt(clusterBytes.length)
@@ -251,9 +250,16 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                        .writeBytes(stateBytes)
                        .writeInt(instanceBytes.length)
                        .writeBytes(instanceBytes)
-                       .writeInt(messageBytes.length)
-                       .writeBytes(messageBytes);
-                channel.writeAndFlush(byteBuf, channel.voidPromise()); // TODO: No flush to avoid syscall?
+                       .writeInt(messageBytes.length);
+
+                // Compose message header and payload
+                CompositeByteBuf fullByteBuf = new CompositeByteBuf(PooledByteBufAllocator.DEFAULT, false, 2);
+                fullByteBuf.addComponent(headerBuf);
+                fullByteBuf.addComponent(Unpooled.wrappedBuffer(messageBytes)); // TODO: message could be ByteBuf
+                fullByteBuf.writerIndex(totalLength);
+
+                // Send
+                channel.writeAndFlush(fullByteBuf, channel.voidPromise()); // TODO: No flush to avoid syscall?
             } catch (Exception e) {
                 throw new IllegalStateException("Could not send message to " + partition + ":" + state, e);
             }
