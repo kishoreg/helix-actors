@@ -5,7 +5,6 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -34,10 +33,8 @@ import org.apache.log4j.Logger;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -108,6 +105,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
     private EventLoopGroup eventLoopGroup;
     private Bootstrap clientBootstrap;
+    private NettyHelixActorStats stats;
 
     /**
      * @param manager
@@ -133,6 +131,9 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     public void start() throws Exception {
         if (isShutdown.getAndSet(false)) {
             eventLoopGroup = new NioEventLoopGroup();
+
+            stats = new NettyHelixActorStats(eventLoopGroup);
+            stats.start();
 
             manager.getConfigAccessor().set(
                     new HelixConfigScopeBuilder(HelixConfigScope.ConfigScopeProperty.PARTICIPANT)
@@ -180,6 +181,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
      */
     public void shutdown() throws Exception {
         if (!isShutdown.getAndSet(true)) {
+            stats.shutdown();
             eventLoopGroup.shutdownGracefully();
         }
     }
@@ -214,6 +216,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                     if (channel == null || !channel.isOpen()) {
                         channel = clientBootstrap.connect(entry.getValue()).sync().channel();
                         channels.put(entry.getValue(), channel);
+                        stats.countChannelOpen();
                     }
                 }
 
@@ -255,7 +258,10 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
                 // Send
                 channel.writeAndFlush(fullByteBuf, channel.voidPromise()); // TODO: No flush to avoid syscall?
+                stats.countBytes(totalLength);
+                stats.countMessage();
             } catch (Exception e) {
+                stats.countError();
                 throw new IllegalStateException("Could not send message to " + partition + ":" + state, e);
             }
         }
