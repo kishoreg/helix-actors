@@ -50,9 +50,10 @@ Process
 
 A resource with 16 partitions will be created on a cluster with two participants.
 
-First, we generate a set of randomly-sized strings. These remain fixed over the
+First, we generate a set of fixed-sized strings. These remain fixed over the
 course of the experiment in order to avoid overheads caused by garbage
-collecting the messages. We just wrap them in ByteBuf objects in our codec.
+collecting the messages. We just wrap them in ByteBuf objects in our codec. We
+can vary the size of these strings to test how different message sizes perform.
 
 Next, we write a driver that lives in each participant, which continually
 selects one of these strings and sends it to a randomly selected partition.
