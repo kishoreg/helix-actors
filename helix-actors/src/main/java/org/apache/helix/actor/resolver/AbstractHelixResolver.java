@@ -229,12 +229,12 @@ public abstract class AbstractHelixResolver implements HelixResolver {
       resetFuture();
 
       // Schedule this connection to expire if not renewed quickly enough
-      _future = _executor.scheduleWithFixedDelay(new Runnable() {
+      _future = _executor.schedule(new Runnable() {
         @Override
         public void run() {
           expire();
         }
-      }, 0L, _leaseLengthMs, TimeUnit.MILLISECONDS);
+      }, _leaseLengthMs, TimeUnit.MILLISECONDS);
 
     }
 
