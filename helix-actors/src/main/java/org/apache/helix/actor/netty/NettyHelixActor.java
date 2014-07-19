@@ -78,7 +78,6 @@ import java.util.concurrent.atomic.AtomicReference;
  </pre>
  * </p>
  */
-// TODO: Hierarchy of callbacks for different scopes
 public class NettyHelixActor<T> implements HelixActor<T> {
 
     private static final Logger LOG = Logger.getLogger(NettyHelixActor.class);
