@@ -273,6 +273,10 @@ public class NettyHelixActor<T> implements HelixActor<T> {
         this.callback.set(callback);
     }
 
+    // TODO: Avoid creating byte[] and HelixActorScope repeatedly
+    // This may be possible using AttributeMap to maintain buffers for the strings,
+    // as well as the HelixActorScope object that holds references to them. Should
+    // use array-backed ByteBufs. Or it may not be possible. But investigate.
     @ChannelHandler.Sharable
     private class HelixActorCallbackHandler extends SimpleChannelInboundHandler<ByteBuf> {
         @Override
