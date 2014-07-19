@@ -1,8 +1,8 @@
 package org.apache.helix.actor.api;
 
 import java.net.InetSocketAddress;
-import java.util.Set;
+import java.util.Map;
 
 public interface HelixActorResolver {
-    Set<InetSocketAddress> resolve(HelixActorScope cluster);
+    Map<String, InetSocketAddress> resolve(HelixActorScope cluster);
 }

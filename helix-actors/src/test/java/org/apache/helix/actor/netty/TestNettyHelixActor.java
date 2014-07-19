@@ -10,15 +10,19 @@ import org.apache.helix.TestHelper;
 import org.apache.helix.ZkUnitTestBase;
 import org.apache.helix.actor.api.HelixActorCallback;
 import org.apache.helix.actor.api.HelixActorMessageCodec;
+import org.apache.helix.actor.api.HelixActorResolver;
 import org.apache.helix.actor.api.HelixActorScope;
 import org.apache.helix.controller.HelixControllerMain;
+import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
+import org.apache.helix.model.InstanceConfig;
 import org.apache.helix.model.Message;
 import org.apache.helix.model.Partition;
 import org.apache.helix.participant.statemachine.StateModel;
 import org.apache.helix.participant.statemachine.StateModelFactory;
 import org.apache.helix.participant.statemachine.StateModelInfo;
 import org.apache.helix.participant.statemachine.Transition;
+import org.apache.helix.spectator.RoutingTableProvider;
 import org.apache.helix.tools.ClusterSetup;
 import org.apache.helix.tools.ClusterStateVerifier;
 import org.testng.Assert;
@@ -26,7 +30,11 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -102,7 +110,7 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
 
         // Start first Actor w/ counter
         final ConcurrentMap<String, AtomicInteger> firstCounts = new ConcurrentHashMap<String, AtomicInteger>();
-        NettyHelixActor<String> firstActor = new NettyHelixActor<String>(firstNode, firstPort, CODEC);
+        NettyHelixActor<String> firstActor = new NettyHelixActor<String>(firstNode, firstPort, CODEC, new DummyResolver(firstNode));
         firstActor.register(new HelixActorCallback<String>() {
             @Override
             public void onMessage(HelixActorScope scope, UUID messageId, String message) {
@@ -115,7 +123,7 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
 
         // Start second Actor w/ counter
         final ConcurrentMap<String, AtomicInteger> secondCounts = new ConcurrentHashMap<String, AtomicInteger>();
-        NettyHelixActor<String> secondActor = new NettyHelixActor<String>(secondNode, secondPort, CODEC);
+        NettyHelixActor<String> secondActor = new NettyHelixActor<String>(secondNode, secondPort, CODEC, new DummyResolver(secondNode));
         secondActor.register(new HelixActorCallback<String>() {
             @Override
             public void onMessage(HelixActorScope scope, UUID messageId, String message) {
@@ -125,6 +133,9 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
             }
         });
         secondActor.start();
+
+        // Allow resolver callbacks to fire
+        Thread.sleep(500);
 
         // Find all partitions on second node...
         String secondName = "localhost_" + secondPort;
@@ -141,14 +152,22 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
         // And use first node to send messages to them
         for (String partitionName : secondPartitions) {
             for (int i = 0; i < numMessages; i++) {
-                firstActor.send(RESOURCE_NAME, partitionName, "ONLINE", UUID.randomUUID(), "Hello world! " + i);
+                firstActor.send(new HelixActorScope(
+                        firstNode.getClusterName(),
+                        RESOURCE_NAME,
+                        partitionName,
+                        "ONLINE"), UUID.randomUUID(), "Hello world! " + i);
             }
         }
 
         // Loopback
         for (String partitionName : secondPartitions) {
             for (int i = 0; i < numMessages; i++) {
-                secondActor.send(RESOURCE_NAME, partitionName, "ONLINE", UUID.randomUUID(), "Hello world! " + i);
+                secondActor.send(new HelixActorScope(
+                        secondNode.getClusterName(),
+                        RESOURCE_NAME,
+                        partitionName,
+                        "ONLINE"), UUID.randomUUID(), "Hello world! " + i);
             }
         }
 
@@ -179,5 +198,44 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
                 System.out.println(message);
             }
         }
+    }
+
+    public static class DummyResolver implements HelixActorResolver {
+
+        private final HelixManager manager;
+        private final RoutingTableProvider routingTableProvider;
+
+        public DummyResolver(HelixManager manager) throws Exception {
+            this.manager = manager;
+            this.routingTableProvider = new RoutingTableProvider();
+            this.manager.addExternalViewChangeListener(this.routingTableProvider);
+            this.manager.addInstanceConfigChangeListener(this.routingTableProvider);
+            this.routingTableProvider.onExternalViewChange(getExternalViews(this.manager), new NotificationContext(this.manager));
+        }
+
+        @Override
+        public Map<String, InetSocketAddress> resolve(HelixActorScope scope) {
+            Map<String, InetSocketAddress> addresses = new HashMap<String, InetSocketAddress>();
+            for (InstanceConfig instanceConfig : routingTableProvider.getInstances(scope.getResource(), scope.getPartition(), scope.getState())) {
+                String actorPort = instanceConfig.getRecord().getSimpleField("ACTOR_PORT");
+                if (actorPort == null) {
+                    throw new IllegalStateException("No actor address registered for target instance " + instanceConfig.getInstanceName());
+                }
+                addresses.put(instanceConfig.getInstanceName(), new InetSocketAddress(instanceConfig.getHostName(), Integer.valueOf(actorPort)));
+            }
+            return addresses;
+        }
+    }
+
+    private static List<ExternalView> getExternalViews(HelixManager manager) {
+        List<String> resources = manager.getClusterManagmentTool().getResourcesInCluster(manager.getClusterName());
+        List<ExternalView> externalViews = new ArrayList<ExternalView>(resources.size());
+        for (String resource : resources) {
+            ExternalView externalView = manager.getClusterManagmentTool().getResourceExternalView(manager.getClusterName(), resource);
+            if (externalView != null) {
+                externalViews.add(externalView);
+            }
+        }
+        return externalViews;
     }
 }

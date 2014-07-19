@@ -18,25 +18,18 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.helix.HelixManager;
-import org.apache.helix.NotificationContext;
 import org.apache.helix.actor.api.HelixActor;
 import org.apache.helix.actor.api.HelixActorCallback;
 import org.apache.helix.actor.api.HelixActorMessageCodec;
+import org.apache.helix.actor.api.HelixActorResolver;
 import org.apache.helix.actor.api.HelixActorScope;
-import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.HelixConfigScope;
-import org.apache.helix.model.InstanceConfig;
-import org.apache.helix.model.Partition;
 import org.apache.helix.model.builder.HelixConfigScopeBuilder;
-import org.apache.helix.spectator.RoutingTableProvider;
 import org.apache.log4j.Logger;
 
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -90,6 +83,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
 
     private static final Logger LOG = Logger.getLogger(NettyHelixActor.class);
     private static final String ACTOR_PORT = "ACTOR_PORT";
+    private static final byte[] EMPTY_BYTES = new byte[0];
 
     // Parameters for length header field of message (tells decoder to interpret but preserve length field in message)
     private static final int MAX_FRAME_LENGTH = 1024 * 1024;
@@ -104,7 +98,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     private final HelixManager manager;
     private final int port;
     private final HelixActorMessageCodec<T> codec;
-    private final RoutingTableProvider routingTableProvider;
+    private final HelixActorResolver resolver;
     private final AtomicReference<HelixActorCallback<T>> callback;
 
     private EventLoopGroup eventLoopGroup;
@@ -119,13 +113,13 @@ public class NettyHelixActor<T> implements HelixActor<T> {
      * @param codec
      *  Codec for decoding / encoding actual message
      */
-    public NettyHelixActor(HelixManager manager, int port, HelixActorMessageCodec<T> codec) {
+    public NettyHelixActor(HelixManager manager, int port, HelixActorMessageCodec<T> codec, HelixActorResolver resolver) {
         this.isShutdown = new AtomicBoolean(true);
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
         this.manager = manager;
         this.port = port;
         this.codec = codec;
-        this.routingTableProvider = new RoutingTableProvider();
+        this.resolver = resolver;
         this.callback = new AtomicReference<HelixActorCallback<T>>();
     }
 
@@ -148,9 +142,6 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                             .forCluster(manager.getClusterName())
                             .forParticipant(manager.getInstanceName())
                             .build(), ACTOR_PORT, String.valueOf(port));
-
-            manager.addExternalViewChangeListener(routingTableProvider);
-            manager.addInstanceConfigChangeListener(routingTableProvider);
 
             new ServerBootstrap()
                     .group(eventLoopGroup)
@@ -178,9 +169,6 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                     .option(ChannelOption.SO_KEEPALIVE, true)
                     .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                     .handler(new NopInitializer());
-
-            // Bootstrap routing table
-            routingTableProvider.onExternalViewChange(getExternalViews(), new NotificationContext(manager));
         }
     }
 
@@ -198,17 +186,9 @@ public class NettyHelixActor<T> implements HelixActor<T> {
      * Sends a message to all partitions with a given state in the cluster.
      */
     @Override
-    public int send(String resource, String partition, String state, UUID messageId, T message) {
-        // Get addresses
-        Map<String, InetSocketAddress> addresses = new HashMap<String, InetSocketAddress>();
-        for (InstanceConfig instanceConfig : routingTableProvider.getInstances(resource, partition, state)) {
-            String actorPort = instanceConfig.getRecord().getSimpleField(ACTOR_PORT);
-            if (actorPort == null) {
-                throw new IllegalStateException("No actor address registered for target instance " + instanceConfig.getInstanceName());
-            }
-            addresses.put(instanceConfig.getInstanceName(), new InetSocketAddress(instanceConfig.getHostName(), Integer.valueOf(actorPort)));
-        }
-
+    public int send(HelixActorScope scope, UUID messageId, T message) {
+        // Resolve addresses
+        Map<String, InetSocketAddress> addresses = resolver.resolve(scope);
 
         // Encode message
         ByteBuf messageByteBuf = codec.encode(message);
@@ -228,10 +208,16 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                     }
                 }
 
-                byte[] resourceBytes = resource.getBytes();
-                byte[] partitionBytes = partition.getBytes();
-                byte[] stateBytes = state.getBytes();
+                // Get metadata bytes
+                byte[] resourceBytes = scope.getResource() == null
+                        ? EMPTY_BYTES : scope.getResource().getBytes();
+                byte[] partitionBytes = scope.getPartition() == null
+                        ? EMPTY_BYTES : scope.getPartition().getBytes();
+                byte[] stateBytes = scope.getState() == null
+                        ? EMPTY_BYTES : scope.getState().getBytes();
                 byte[] instanceBytes = entry.getKey().getBytes();
+
+                // Compute total length
                 int totalLength = NUM_LENGTH_FIELDS * (Integer.SIZE / 8)
                         + (Long.SIZE / 8) * 2 // 128 bit UUID
                         + clusterBytes.length
@@ -270,7 +256,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                 stats.countMessage();
             } catch (Exception e) {
                 stats.countError();
-                throw new IllegalStateException("Could not send message to " + partition + ":" + state, e);
+                throw new IllegalStateException("Could not send message to " + scope, e);
             }
         }
 
@@ -288,20 +274,6 @@ public class NettyHelixActor<T> implements HelixActor<T> {
         this.callback.set(callback);
     }
 
-    // Returns external views for all resources currently in cluster
-    private List<ExternalView> getExternalViews() {
-        List<String> resources = manager.getClusterManagmentTool().getResourcesInCluster(manager.getClusterName());
-        List<ExternalView> externalViews = new ArrayList<ExternalView>(resources.size());
-        for (String resource : resources) {
-            ExternalView externalView = manager.getClusterManagmentTool().getResourceExternalView(manager.getClusterName(), resource);
-            if (externalView != null) {
-                externalViews.add(externalView);
-            }
-        }
-        return externalViews;
-    }
-
-    // Routes received messages to their respective callbacks
     @ChannelHandler.Sharable
     private class HelixActorCallbackHandler extends SimpleChannelInboundHandler<ByteBuf> {
         @Override

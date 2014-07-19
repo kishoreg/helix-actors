@@ -1,8 +1,5 @@
 package org.apache.helix.actor.api;
 
-import org.apache.helix.model.Partition;
-
-import java.net.InetSocketAddress;
 import java.util.UUID;
 
 /**

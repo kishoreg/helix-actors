@@ -24,4 +24,9 @@ public class HelixActorScope {
     public HelixActorScope setResource(String resource) { this.resource = resource; return this; }
     public HelixActorScope setPartition(String partition) { this.partition = partition; return this; }
     public HelixActorScope setState(String state) { this.state = state; return this; }
+
+    @Override
+    public String toString() {
+        return this.cluster + ":" + this.resource + ":" + this.partition + ":" + this.state;
+    }
 }
