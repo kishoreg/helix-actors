@@ -4,5 +4,9 @@ import java.net.InetSocketAddress;
 import java.util.Map;
 
 public interface HelixActorResolver {
-    Map<String, InetSocketAddress> resolve(HelixActorScope cluster);
+
+    /**
+     * Given an Actor scope, return a map of instance name to actor socket address.
+     */
+    Map<String, InetSocketAddress> resolve(HelixActorScope scope);
 }
