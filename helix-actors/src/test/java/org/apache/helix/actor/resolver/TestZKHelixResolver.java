@@ -98,20 +98,20 @@ public class TestZKHelixResolver extends ZkUnitTestBase {
   @Test
   public void testResolution() {
     HelixMessageScope clusterScope = new HelixMessageScope.Builder().cluster(CLUSTER_NAME).build();
-    Set<InetSocketAddress> clusterScopedInstances = _resolver.resolve(clusterScope);
-    Assert.assertTrue(clusterScopedInstances.containsAll(_socketMap.values()), "Expected "
+    Map<String, InetSocketAddress> clusterScopedInstances = _resolver.resolve(clusterScope);
+    Assert.assertTrue(clusterScopedInstances.values().containsAll(_socketMap.values()), "Expected "
         + _socketMap.values() + ", found " + clusterScopedInstances);
 
     HelixMessageScope resourceScope =
         new HelixMessageScope.Builder().cluster(CLUSTER_NAME).resource(RESOURCE_NAME).build();
-    Set<InetSocketAddress> resourceScopedInstances = _resolver.resolve(resourceScope);
-    Assert.assertTrue(resourceScopedInstances.containsAll(_socketMap.values()), "Expected "
+    Map<String, InetSocketAddress> resourceScopedInstances = _resolver.resolve(resourceScope);
+    Assert.assertTrue(resourceScopedInstances.values().containsAll(_socketMap.values()), "Expected "
         + _socketMap.values() + ", found " + resourceScopedInstances);
 
     HelixMessageScope partition0Scope =
         new HelixMessageScope.Builder().cluster(CLUSTER_NAME).resource(RESOURCE_NAME)
             .partition(RESOURCE_NAME + "_0").build();
-    Set<InetSocketAddress> partition0ScopedInstances = _resolver.resolve(partition0Scope);
+    Map<String, InetSocketAddress> partition0ScopedInstances = _resolver.resolve(partition0Scope);
     ExternalView externalView =
         _setupTool.getClusterManagementTool().getResourceExternalView(CLUSTER_NAME, RESOURCE_NAME);
     Set<String> instanceSet = externalView.getStateMap(RESOURCE_NAME + "_0").keySet();
@@ -119,9 +119,8 @@ public class TestZKHelixResolver extends ZkUnitTestBase {
     for (String instanceName : instanceSet) {
       expectedSocketAddrs.add(_socketMap.get(instanceName));
     }
-    Assert.assertTrue(partition0ScopedInstances.equals(expectedSocketAddrs), "Expected "
-        + expectedSocketAddrs + ", found " + partition0ScopedInstances);
-
+    Assert.assertEquals(partition0ScopedInstances.values(), expectedSocketAddrs,
+            "Expected " + expectedSocketAddrs + ", found " + partition0ScopedInstances.values());
   }
 
   @AfterClass
