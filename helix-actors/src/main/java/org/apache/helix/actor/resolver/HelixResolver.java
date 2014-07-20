@@ -20,7 +20,7 @@ package org.apache.helix.actor.resolver;
  */
 
 import java.net.InetSocketAddress;
-import java.util.Set;
+import java.util.Map;
 
 /**
  * An interface that resolves a message scope to a direct address.
@@ -47,5 +47,5 @@ public interface HelixResolver {
    * @param scope the scope describing the instances to address
    * @return Set of all InetSocketAddress (if available) of matching participants
    */
-  Set<InetSocketAddress> resolve(HelixMessageScope scope);
+  Map<String, InetSocketAddress> resolve(HelixMessageScope scope);
 }

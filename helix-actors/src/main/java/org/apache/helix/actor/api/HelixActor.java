@@ -1,5 +1,7 @@
 package org.apache.helix.actor.api;
 
+import org.apache.helix.actor.resolver.HelixMessageScope;
+
 import java.util.UUID;
 
 /**
@@ -26,7 +28,7 @@ public interface HelixActor<T> {
     /**
      * Sends a message to one or more nodes, and return the number of messages sent
      */
-    int send(HelixActorScope scope, UUID messageId, T message);
+    int send(HelixMessageScope scope, UUID messageId, T message);
 
     /**
      * Register a callback.

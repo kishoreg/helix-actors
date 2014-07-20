@@ -21,8 +21,8 @@ import org.apache.helix.HelixManager;
 import org.apache.helix.actor.api.HelixActor;
 import org.apache.helix.actor.api.HelixActorCallback;
 import org.apache.helix.actor.api.HelixActorMessageCodec;
-import org.apache.helix.actor.api.HelixActorResolver;
-import org.apache.helix.actor.api.HelixActorScope;
+import org.apache.helix.actor.resolver.HelixMessageScope;
+import org.apache.helix.actor.resolver.HelixResolver;
 import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.builder.HelixConfigScopeBuilder;
 import org.apache.log4j.Logger;
@@ -97,7 +97,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     private final HelixManager manager;
     private final int port;
     private final HelixActorMessageCodec<T> codec;
-    private final HelixActorResolver resolver;
+    private final HelixResolver resolver;
     private final AtomicReference<HelixActorCallback<T>> callback;
 
     private EventLoopGroup eventLoopGroup;
@@ -112,7 +112,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
      * @param codec
      *  Codec for decoding / encoding actual message
      */
-    public NettyHelixActor(HelixManager manager, int port, HelixActorMessageCodec<T> codec, HelixActorResolver resolver) {
+    public NettyHelixActor(HelixManager manager, int port, HelixActorMessageCodec<T> codec, HelixResolver resolver) {
         this.isShutdown = new AtomicBoolean(true);
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
         this.manager = manager;
@@ -185,7 +185,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
      * Sends a message to all partitions with a given state in the cluster.
      */
     @Override
-    public int send(HelixActorScope scope, UUID messageId, T message) {
+    public int send(HelixMessageScope scope, UUID messageId, T message) {
         // Resolve addresses
         Map<String, InetSocketAddress> addresses = resolver.resolve(scope);
 
@@ -354,7 +354,12 @@ public class NettyHelixActor<T> implements HelixActor<T> {
                     throw new IllegalStateException("No callback registered");
                 }
                 callback.get().onMessage(
-                        new HelixActorScope(clusterName, resourceName, partitionName, state), messageId, message);
+                        new HelixMessageScope.Builder()
+                                .cluster(clusterName)
+                                .resource(resourceName)
+                                .partition(partitionName)
+                                .state(state)
+                                .build(), messageId, message);
             } else {
                 LOG.warn("Received message addressed to " + instanceName + " which is not this instance");
             }

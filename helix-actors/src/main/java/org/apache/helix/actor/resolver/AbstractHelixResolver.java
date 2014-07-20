@@ -76,13 +76,13 @@ public abstract class AbstractHelixResolver implements HelixResolver {
   }
 
   @Override
-  public Set<InetSocketAddress> resolve(HelixMessageScope scope) {
+  public Map<String, InetSocketAddress> resolve(HelixMessageScope scope) {
     if (!scope.isValid()) {
       LOG.error("Scope " + scope + " is not valid!");
-      return Collections.emptySet();
+      return Collections.emptyMap();
     } else if (!_isConnected) {
       LOG.error("Cannot resolve " + scope + " without first connecting!");
-      return Collections.emptySet();
+      return Collections.emptyMap();
     }
 
     // Connect or refresh connection
@@ -139,14 +139,14 @@ public abstract class AbstractHelixResolver implements HelixResolver {
     }
 
     // Resolve those participants
-    Set<InetSocketAddress> result = Sets.newHashSet();
+    Map<String, InetSocketAddress> result = Maps.newHashMap();
     for (InstanceConfig participant : participants) {
       String actorPort = participant.getRecord().getSimpleField(ACTOR_PORT);
       if (actorPort == null) {
         LOG.error("No actor address registered for target instance "
             + participant.getInstanceName() + ", skipping");
       } else {
-        result.add(new InetSocketAddress(participant.getHostName(), Integer.valueOf(actorPort)));
+        result.put(participant.getInstanceName(), new InetSocketAddress(participant.getHostName(), Integer.valueOf(actorPort)));
       }
     }
     return result;
