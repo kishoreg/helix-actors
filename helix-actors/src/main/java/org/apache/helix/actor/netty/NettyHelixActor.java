@@ -341,12 +341,12 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             ByteBuf messageBytes = byteBuf.slice(byteBuf.readerIndex(), messageBytesSize);
 
             // Parse
-            final String clusterName = clusterBytes.length > 0 ? new String(clusterBytes) : null;
-            final String resourceName = resourceBytes.length > 0 ? new String(resourceBytes) : null;
-            final String partitionName = partitionBytes.length > 0 ? new String(partitionBytes) : null;
-            final String state = stateBytes.length > 0 ? new String(stateBytes) : null;
-            final String instanceName = instanceBytes.length > 0 ? new String(instanceBytes) : null;
-            final T message = codec.decode(messageBytes);
+            String clusterName = toNonEmptyString(clusterBytes);
+            String resourceName = toNonEmptyString(resourceBytes);
+            String partitionName = toNonEmptyString(partitionBytes);
+            String state = toNonEmptyString(stateBytes);
+            String instanceName = toNonEmptyString(instanceBytes);
+            T message = codec.decode(messageBytes);
 
             // Handle callback (must be in this handler to preserve ordering)
             if (instanceName != null && instanceName.equals(manager.getInstanceName())) {
@@ -369,6 +369,11 @@ public class NettyHelixActor<T> implements HelixActor<T> {
         public void exceptionCaught(ChannelHandlerContext channelHandlerContext, Throwable cause) {
             LOG.error(cause);
         }
+    }
+
+    // Returns null if bytes.length == 0, or a String from those bytes
+    private static String toNonEmptyString(byte[] bytes) {
+        return bytes.length > 0 ? new String(bytes) : null;
     }
 
     private static class NopInitializer extends ChannelInitializer<SocketChannel> {
