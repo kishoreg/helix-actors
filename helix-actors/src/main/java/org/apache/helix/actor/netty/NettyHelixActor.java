@@ -349,7 +349,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             final T message = codec.decode(messageBytes);
 
             // Handle callback (must be in this handler to preserve ordering)
-            if (instanceName.equals(manager.getInstanceName())) {
+            if (instanceName != null && instanceName.equals(manager.getInstanceName())) {
                 if (callback.get() == null) {
                     throw new IllegalStateException("No callback registered");
                 }
