@@ -341,11 +341,11 @@ public class NettyHelixActor<T> implements HelixActor<T> {
             ByteBuf messageBytes = byteBuf.slice(byteBuf.readerIndex(), messageBytesSize);
 
             // Parse
-            final String clusterName = new String(clusterBytes);
-            final String resourceName = new String(resourceBytes);
-            final String partitionName = new String(partitionBytes);
-            final String state = new String(stateBytes);
-            final String instanceName = new String(instanceBytes);
+            final String clusterName = clusterBytes.length > 0 ? new String(clusterBytes) : null;
+            final String resourceName = resourceBytes.length > 0 ? new String(resourceBytes) : null;
+            final String partitionName = partitionBytes.length > 0 ? new String(partitionBytes) : null;
+            final String state = stateBytes.length > 0 ? new String(stateBytes) : null;
+            final String instanceName = instanceBytes.length > 0 ? new String(instanceBytes) : null;
             final T message = codec.decode(messageBytes);
 
             // Handle callback (must be in this handler to preserve ordering)
