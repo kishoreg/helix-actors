@@ -6,7 +6,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * Encodes and decodes messages of type T to and from {@link io.netty.buffer.ByteBuf}s
+ * Encodes and decodes typed messages to and from {@link io.netty.buffer.ByteBuf}s
+ *
+ * <p>
+ *     There exists a codec for each typed message, and message types are identified by
+ *     a reserved integer value. The mapping of type to codec can be managed by using
+ *     {@link org.apache.helix.ipc.HelixIPCMessageCodec.Registry}.
+ * </p>
  */
 public interface HelixIPCMessageCodec {
     /**
@@ -39,7 +45,7 @@ public interface HelixIPCMessageCodec {
      * </p>
      *
      * <p>
-     *     For example, if T is String, and you want to generate a new object:
+     *     For example, if the return value is String, and you want to generate a new object:
      *     <pre>
      *         byte[] bytes = new byte[message.readableBytes()];
      *         message.readBytes(bytes);
@@ -50,13 +56,13 @@ public interface HelixIPCMessageCodec {
     Object decode(ByteBuf message);
 
     /**
-     * A thin wrapper around {@link java.util.concurrent.ConcurrentHashMap} that reserves
-     * some message types for internal use.
+     * Maps message types to codecs, and reserves a subset of messages for internal use.
      */
     public static class Registry {
         private final ConcurrentMap<Integer, HelixIPCMessageCodec> registry
                 = new ConcurrentHashMap<Integer, HelixIPCMessageCodec>();
 
+        /** Registers a codec for a given message type */
         public void put(int messageType, HelixIPCMessageCodec codec) {
             if (messageType < HelixIPCConstants.FIRST_CUSTOM_MESSAGE_TYPE) {
                 throw new IllegalArgumentException("First allowed custom message type is "
@@ -65,6 +71,7 @@ public interface HelixIPCMessageCodec {
             registry.put(messageType, codec);
         }
 
+        /** Gets registered codec for a given message type */
         public HelixIPCMessageCodec get(int messageType) {
             return registry.get(messageType);
         }

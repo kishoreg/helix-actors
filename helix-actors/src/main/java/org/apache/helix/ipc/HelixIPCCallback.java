@@ -5,7 +5,9 @@ import org.apache.helix.resolver.HelixMessageScope;
 import java.util.UUID;
 
 /**
- * Callback registered per-resource to handle messages sent via {@link HelixIPCService#send}
+ * Callback registered per message type to handle messages sent via {@link AbstractHelixIPCService#send}
+ *
+ * @see AbstractHelixIPCService#register(int, HelixIPCCallback)
  */
 public interface HelixIPCCallback {
     void onMessage(HelixMessageScope scope, UUID messageId, Object message);

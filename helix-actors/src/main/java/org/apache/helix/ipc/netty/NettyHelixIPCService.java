@@ -17,7 +17,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import org.apache.helix.ipc.HelixIPCService;
+import org.apache.helix.ipc.AbstractHelixIPCService;
 import org.apache.helix.ipc.HelixIPCCallback;
 import org.apache.helix.ipc.HelixIPCMessageCodec;
 import org.apache.helix.resolver.HelixMessageScope;
@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Provides partition/state-level messaging among nodes in a Helix cluster.
  *
  * <p>
- *     The message format is
+ *     The message format is (where len == 4B, and contains the length of the next field)
  <pre>
      +----------------------+
      | totalLength (4B)     |
@@ -48,37 +48,22 @@ import java.util.concurrent.atomic.AtomicBoolean;
      +----------------------+
      | messageId (16B)      |
      +----------------------+
-     | clusterLength (4B)   |
+     | len | cluster        |
      +----------------------+
-     | cluster (var)        |
+     | len | resource       |
      +----------------------+
-     | resourceLength (4B)  |
+     | len | partition      |
      +----------------------+
-     | resource (var)       |
+     | len | state          |
      +----------------------+
-     | partitionLength (4B) |
+     | len | instance       |
      +----------------------+
-     | partition (var)      |
+     | len | message        |
      +----------------------+
-     | stateLength (4B)     |
-     +----------------------+
-     | state (var)          |
-     +----------------------+
-     | instanceLength (4B)  |
-     +----------------------+
-     | instance (var)       |
-     +----------------------+
-     | messageLength (4B)   |
-     +----------------------+
-     |                      |
-     | message (var)        |
-     |                      |
-     +----------------------+
-
  </pre>
  * </p>
  */
-public class NettyHelixIPCService implements HelixIPCService {
+public class NettyHelixIPCService extends AbstractHelixIPCService {
 
     private static final Logger LOG = Logger.getLogger(NettyHelixIPCService.class);
     private static final byte[] EMPTY_BYTES = new byte[0];
@@ -94,10 +79,6 @@ public class NettyHelixIPCService implements HelixIPCService {
 
     private final AtomicBoolean isShutdown;
     private final ConcurrentMap<InetSocketAddress, Channel> channels;
-    private final String instanceName;
-    private final int port;
-    private final HelixIPCMessageCodec.Registry codecRegistry;
-    private final HelixResolver resolver;
     private final ConcurrentMap<Integer, HelixIPCCallback> callbacks;
 
     private EventLoopGroup eventLoopGroup;
@@ -108,12 +89,9 @@ public class NettyHelixIPCService implements HelixIPCService {
                                 int port,
                                 HelixIPCMessageCodec.Registry codecRegistry,
                                 HelixResolver resolver) {
+        super(instanceName, port, codecRegistry, resolver);
         this.isShutdown = new AtomicBoolean(true);
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
-        this.instanceName = instanceName;
-        this.port = port;
-        this.codecRegistry = codecRegistry;
-        this.resolver = resolver;
         this.callbacks = new ConcurrentHashMap<Integer, HelixIPCCallback>();
     }
 
