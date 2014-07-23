@@ -8,5 +8,5 @@ import java.util.UUID;
  * Callback registered per-resource to handle messages sent via {@link HelixIPCService#send}
  */
 public interface HelixIPCCallback {
-    void onMessage(HelixMessageScope scope, int messageType, UUID messageId, Object message);
+    void onMessage(HelixMessageScope scope, UUID messageId, Object message);
 }

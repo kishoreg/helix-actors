@@ -36,7 +36,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Provides partition/state-level messaging among nodes in a Helix cluster.
@@ -105,7 +104,7 @@ public class NettyHelixIPCService implements HelixIPCService {
     private final int port;
     private final HelixIPCMessageCodecRegistry codecRegistry;
     private final HelixResolver resolver;
-    private final AtomicReference<HelixIPCCallback> callback;
+    private final ConcurrentMap<Integer, HelixIPCCallback> callbacks;
 
     private EventLoopGroup eventLoopGroup;
     private Bootstrap clientBootstrap;
@@ -121,7 +120,7 @@ public class NettyHelixIPCService implements HelixIPCService {
         this.port = port;
         this.codecRegistry = codecRegistry;
         this.resolver = resolver;
-        this.callback = new AtomicReference<HelixIPCCallback>();
+        this.callbacks = new ConcurrentHashMap<Integer, HelixIPCCallback>();
     }
 
     /**
@@ -277,11 +276,11 @@ public class NettyHelixIPCService implements HelixIPCService {
      * Register a callback which is called when this node receives a message.
      */
     @Override
-    public void register(HelixIPCCallback callback) {
+    public void register(int messageType, HelixIPCCallback callback) {
         if (!isShutdown.get()) {
             throw new IllegalStateException("Cannot register callback after started");
         }
-        this.callback.set(callback);
+        this.callbacks.put(messageType, callback);
     }
 
     // TODO: Avoid creating byte[] and HelixActorScope repeatedly
@@ -371,16 +370,16 @@ public class NettyHelixIPCService implements HelixIPCService {
 
             // Handle callback (must be in this handler to preserve ordering)
             if (instanceName != null && instanceName.equals(manager.getInstanceName())) {
-                if (callback.get() == null) {
+                if (callbacks.get(messageType) == null) {
                     throw new IllegalStateException("No callback registered");
                 }
-                callback.get().onMessage(
+                callbacks.get(messageType).onMessage(
                         new HelixMessageScope.Builder()
                                 .cluster(clusterName)
                                 .resource(resourceName)
                                 .partition(partitionName)
                                 .state(state)
-                                .build(), messageType, messageId, message);
+                                .build(), messageId, message);
             } else {
                 LOG.warn("Received message addressed to " + instanceName + " which is not this instance");
             }

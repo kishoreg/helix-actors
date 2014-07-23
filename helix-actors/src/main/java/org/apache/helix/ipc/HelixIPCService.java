@@ -34,5 +34,5 @@ public interface HelixIPCService {
      *     Should be called before start.
      * </p>
      */
-    void register(HelixIPCCallback callback);
+    void register(int messageType, HelixIPCCallback callback);
 }

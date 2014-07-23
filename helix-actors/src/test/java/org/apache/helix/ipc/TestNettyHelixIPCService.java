@@ -103,16 +103,17 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
     @Test
     public void testMessagePassing() throws Exception {
         int numMessages = 1000;
+        int messageType = 0;
 
         HelixIPCMessageCodecRegistry codecRegistry = new HelixIPCMessageCodecRegistry();
-        codecRegistry.put(0, CODEC);
+        codecRegistry.put(messageType, CODEC);
 
         // Start first IPC service w/ counter
         final ConcurrentMap<String, AtomicInteger> firstCounts = new ConcurrentHashMap<String, AtomicInteger>();
         NettyHelixIPCService firstIPC = new NettyHelixIPCService(firstNode, firstPort, codecRegistry, firstResolver);
-        firstIPC.register(new HelixIPCCallback() {
+        firstIPC.register(messageType, new HelixIPCCallback() {
             @Override
-            public void onMessage(HelixMessageScope scope, int messageType, UUID messageId, Object message) {
+            public void onMessage(HelixMessageScope scope, UUID messageId, Object message) {
                 String key = scope.getPartition() + ":" + scope.getState();
                 firstCounts.putIfAbsent(key, new AtomicInteger());
                 firstCounts.get(key).incrementAndGet();
@@ -123,9 +124,9 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
         // Start second IPC Service w/ counter
         final ConcurrentMap<String, AtomicInteger> secondCounts = new ConcurrentHashMap<String, AtomicInteger>();
         NettyHelixIPCService secondIPC = new NettyHelixIPCService(secondNode, secondPort, codecRegistry, secondResolver);
-        secondIPC.register(new HelixIPCCallback() {
+        secondIPC.register(messageType, new HelixIPCCallback() {
             @Override
-            public void onMessage(HelixMessageScope scope, int messageType, UUID messageId, Object message) {
+            public void onMessage(HelixMessageScope scope, UUID messageId, Object message) {
                 String key = scope.getPartition() + ":" + scope.getState();
                 secondCounts.putIfAbsent(key, new AtomicInteger());
                 secondCounts.get(key).incrementAndGet();
