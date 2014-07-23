@@ -340,13 +340,13 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                     throw new IllegalStateException("No callback registered");
                 }
                 callbacks.get(messageType).onMessage(
-                        srcInstance,
                         new HelixMessageScope.Builder()
                                 .cluster(clusterName)
                                 .resource(resourceName)
                                 .partition(partitionName)
                                 .state(state)
                                 .build(),
+                        srcInstance,
                         messageId,
                         message);
             } else {

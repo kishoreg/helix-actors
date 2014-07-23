@@ -10,5 +10,5 @@ import java.util.UUID;
  * @see AbstractHelixIPCService#registerCallback(int, HelixIPCCallback)
  */
 public interface HelixIPCCallback {
-    void onMessage(String srcInstance, HelixMessageScope scope, UUID messageId, Object message);
+    void onMessage(HelixMessageScope scope, String srcInstance, UUID messageId, Object message);
 }
