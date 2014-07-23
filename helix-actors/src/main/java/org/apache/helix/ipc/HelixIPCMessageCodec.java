@@ -24,7 +24,7 @@ public interface HelixIPCMessageCodec {
      * @see io.netty.buffer.ByteBuf#slice()
      * @see io.netty.buffer.CompositeByteBuf
      */
-    ByteBuf encode(int messageType, Object message);
+    ByteBuf encode(Object message);
 
     /**
      * Decodes a typed message from a {@link io.netty.buffer.ByteBuf}.
@@ -44,5 +44,5 @@ public interface HelixIPCMessageCodec {
      *     </pre>
      * </p>
      */
-    Object decode(int messageType, ByteBuf message);
+    Object decode(ByteBuf message);
 }

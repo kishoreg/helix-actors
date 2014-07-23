@@ -35,13 +35,13 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
     private static final String RESOURCE_NAME = "MyResource";
     private static final HelixIPCMessageCodec CODEC = new HelixIPCMessageCodec() {
         @Override
-        public ByteBuf encode(int messageType, Object message) {
+        public ByteBuf encode(Object message) {
             String s = (String) message;
             return Unpooled.wrappedBuffer(s.getBytes());
         }
 
         @Override
-        public String decode(int messageType, ByteBuf message) {
+        public String decode(ByteBuf message) {
             byte[] bytes = new byte[message.readableBytes()]; // n.b. this is bad
             message.readBytes(bytes);
             return new String(bytes);
@@ -104,9 +104,12 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
     public void testMessagePassing() throws Exception {
         int numMessages = 1000;
 
+        HelixIPCMessageCodecRegistry codecRegistry = new HelixIPCMessageCodecRegistry();
+        codecRegistry.put(0, CODEC);
+
         // Start first IPC service w/ counter
         final ConcurrentMap<String, AtomicInteger> firstCounts = new ConcurrentHashMap<String, AtomicInteger>();
-        NettyHelixIPCService firstIPC = new NettyHelixIPCService(firstNode, firstPort, CODEC, firstResolver);
+        NettyHelixIPCService firstIPC = new NettyHelixIPCService(firstNode, firstPort, codecRegistry, firstResolver);
         firstIPC.register(new HelixIPCCallback() {
             @Override
             public void onMessage(HelixMessageScope scope, int messageType, UUID messageId, Object message) {
@@ -119,7 +122,7 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
 
         // Start second IPC Service w/ counter
         final ConcurrentMap<String, AtomicInteger> secondCounts = new ConcurrentHashMap<String, AtomicInteger>();
-        NettyHelixIPCService secondIPC = new NettyHelixIPCService(secondNode, secondPort, CODEC, secondResolver);
+        NettyHelixIPCService secondIPC = new NettyHelixIPCService(secondNode, secondPort, codecRegistry, secondResolver);
         secondIPC.register(new HelixIPCCallback() {
             @Override
             public void onMessage(HelixMessageScope scope, int messageType, UUID messageId, Object message) {

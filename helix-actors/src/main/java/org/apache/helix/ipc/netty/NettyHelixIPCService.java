@@ -18,6 +18,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.helix.HelixManager;
+import org.apache.helix.ipc.HelixIPCMessageCodecRegistry;
 import org.apache.helix.ipc.HelixIPCService;
 import org.apache.helix.ipc.HelixIPCCallback;
 import org.apache.helix.ipc.HelixIPCMessageCodec;
@@ -102,7 +103,7 @@ public class NettyHelixIPCService implements HelixIPCService {
     private final ConcurrentMap<InetSocketAddress, Channel> channels;
     private final HelixManager manager;
     private final int port;
-    private final HelixIPCMessageCodec codec;
+    private final HelixIPCMessageCodecRegistry codecRegistry;
     private final HelixResolver resolver;
     private final AtomicReference<HelixIPCCallback> callback;
 
@@ -112,13 +113,13 @@ public class NettyHelixIPCService implements HelixIPCService {
 
     public NettyHelixIPCService(HelixManager manager,
                                 int port,
-                                HelixIPCMessageCodec codec,
+                                HelixIPCMessageCodecRegistry codecRegistry,
                                 HelixResolver resolver) {
         this.isShutdown = new AtomicBoolean(true);
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
         this.manager = manager;
         this.port = port;
-        this.codec = codec;
+        this.codecRegistry = codecRegistry;
         this.resolver = resolver;
         this.callback = new AtomicReference<HelixIPCCallback>();
     }
@@ -187,11 +188,17 @@ public class NettyHelixIPCService implements HelixIPCService {
      */
     @Override
     public int send(HelixMessageScope scope, int messageType, UUID messageId, Object message) {
+        // Get codec
+        HelixIPCMessageCodec codec = codecRegistry.get(messageType);
+        if (codec == null) {
+            throw new IllegalArgumentException("No codec for message type " + messageType);
+        }
+
         // Resolve addresses
         Map<String, InetSocketAddress> addresses = resolver.resolve(scope);
 
         // Encode message
-        ByteBuf messageByteBuf = codec.encode(messageType, message);
+        ByteBuf messageByteBuf = codec.encode(message);
         byte[] clusterBytes = manager.getClusterName().getBytes();
 
         // Send message(s)
@@ -293,6 +300,10 @@ public class NettyHelixIPCService implements HelixIPCService {
 
             // Message type
             int messageType = byteBuf.readInt();
+            HelixIPCMessageCodec codec = codecRegistry.get(messageType);
+            if (codec == null) {
+                throw new IllegalStateException("Received message for which there is no codec: type=" + messageType);
+            }
 
             // Message ID
             UUID messageId = new UUID(byteBuf.readLong(), byteBuf.readLong());
@@ -356,7 +367,7 @@ public class NettyHelixIPCService implements HelixIPCService {
             String partitionName = toNonEmptyString(partitionBytes);
             String state = toNonEmptyString(stateBytes);
             String instanceName = toNonEmptyString(instanceBytes);
-            Object message = codec.decode(messageType, messageBytes);
+            Object message = codec.decode(messageBytes);
 
             // Handle callback (must be in this handler to preserve ordering)
             if (instanceName != null && instanceName.equals(manager.getInstanceName())) {
