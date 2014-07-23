@@ -192,6 +192,10 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
             Assert.assertNotNull(count);
             Assert.assertEquals(count.get(), 2 * numMessages);
         }
+
+        // Shutdown
+        firstIPC.shutdown();
+        secondIPC.shutdown();
     }
 
     public static class DummyStateModelFactory extends StateModelFactory<StateModel> {
