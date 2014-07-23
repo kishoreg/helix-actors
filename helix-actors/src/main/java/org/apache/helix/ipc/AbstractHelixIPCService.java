@@ -49,11 +49,11 @@ public abstract class AbstractHelixIPCService {
     /**
      * Sends a message to one or more nodes, and return the number of messages sent
      */
-    public abstract int send(HelixMessageScope scope,
-                             Map<String, InetSocketAddress> addresses,
-                             int messageType,
-                             UUID messageId,
-                             Object message);
+    public abstract void send(HelixMessageScope scope,
+                              Map<String, InetSocketAddress> addresses,
+                              int messageType,
+                              UUID messageId,
+                              Object message);
 
     /**
      * Register a callback for a given message type.

@@ -145,11 +145,11 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
      * Sends a message to all partitions with a given state in the cluster.
      */
     @Override
-    public int send(HelixMessageScope scope,
-                    Map<String, InetSocketAddress> addresses,
-                    int messageType,
-                    UUID messageId,
-                    Object message) {
+    public void send(HelixMessageScope scope,
+                     Map<String, InetSocketAddress> addresses,
+                     int messageType,
+                     UUID messageId,
+                     Object message) {
         // Get codec
         HelixIPCMessageCodec codec = messageCodecs.get(messageType);
         if (codec == null) {
@@ -229,8 +229,6 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                 throw new IllegalStateException("Could not send message to " + scope, e);
             }
         }
-
-        return addresses.size();
     }
 
     // TODO: Avoid creating byte[] and HelixActorScope repeatedly
