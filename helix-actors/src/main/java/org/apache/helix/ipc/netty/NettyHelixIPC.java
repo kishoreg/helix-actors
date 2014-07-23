@@ -46,6 +46,10 @@ import java.util.concurrent.atomic.AtomicReference;
      +----------------------+
      | totalLength (4B)     |
      +----------------------+
+     | version (4B)         |
+     +----------------------+
+     | messageType (4B)     |
+     +----------------------+
      | messageId (16B)      |
      +----------------------+
      | clusterLength (4B)   |
@@ -83,6 +87,8 @@ public class NettyHelixIPC<T> implements HelixIPC<T> {
     private static final Logger LOG = Logger.getLogger(NettyHelixIPC.class);
     private static final String IPC_PORT = "IPC_PORT";
     private static final byte[] EMPTY_BYTES = new byte[0];
+    private static final int DEFAULT_MESSAGE_VERSION = 0;
+    private static final int DEFAULT_MESSAGE_TYPE = 0;
 
     // Parameters for length header field of message (tells decoder to interpret but preserve length field in message)
     private static final int MAX_FRAME_LENGTH = 1024 * 1024;
@@ -218,6 +224,7 @@ public class NettyHelixIPC<T> implements HelixIPC<T> {
 
                 // Compute total length
                 int totalLength = NUM_LENGTH_FIELDS * (Integer.SIZE / 8)
+                        + (Integer.SIZE / 8) * 2 // version, type
                         + (Long.SIZE / 8) * 2 // 128 bit UUID
                         + clusterBytes.length
                         + resourceBytes.length
@@ -229,19 +236,21 @@ public class NettyHelixIPC<T> implements HelixIPC<T> {
                 // Build message header
                 ByteBuf headerBuf = PooledByteBufAllocator.DEFAULT.buffer();
                 headerBuf.writeInt(totalLength)
-                       .writeLong(messageId.getMostSignificantBits())
-                       .writeLong(messageId.getLeastSignificantBits())
-                       .writeInt(clusterBytes.length)
-                       .writeBytes(clusterBytes)
-                       .writeInt(resourceBytes.length)
-                       .writeBytes(resourceBytes)
-                       .writeInt(partitionBytes.length)
-                       .writeBytes(partitionBytes)
-                       .writeInt(stateBytes.length)
-                       .writeBytes(stateBytes)
-                       .writeInt(instanceBytes.length)
-                       .writeBytes(instanceBytes)
-                       .writeInt(messageByteBuf.readableBytes());
+                        .writeInt(DEFAULT_MESSAGE_VERSION)
+                        .writeInt(DEFAULT_MESSAGE_TYPE)
+                        .writeLong(messageId.getMostSignificantBits())
+                        .writeLong(messageId.getLeastSignificantBits())
+                        .writeInt(clusterBytes.length)
+                        .writeBytes(clusterBytes)
+                        .writeInt(resourceBytes.length)
+                        .writeBytes(resourceBytes)
+                        .writeInt(partitionBytes.length)
+                        .writeBytes(partitionBytes)
+                        .writeInt(stateBytes.length)
+                        .writeBytes(stateBytes)
+                        .writeInt(instanceBytes.length)
+                        .writeBytes(instanceBytes)
+                        .writeInt(messageByteBuf.readableBytes());
 
                 // Compose message header and payload
                 CompositeByteBuf fullByteBuf = new CompositeByteBuf(PooledByteBufAllocator.DEFAULT, false, 2);
@@ -283,6 +292,12 @@ public class NettyHelixIPC<T> implements HelixIPC<T> {
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf byteBuf) throws Exception {
             // Message length
             int messageLength = byteBuf.readInt();
+
+            // Message version
+            int messageVersion = byteBuf.readInt();
+
+            // Message type
+            int messageType = byteBuf.readInt();
 
             // Message ID
             UUID messageId = new UUID(byteBuf.readLong(), byteBuf.readLong());

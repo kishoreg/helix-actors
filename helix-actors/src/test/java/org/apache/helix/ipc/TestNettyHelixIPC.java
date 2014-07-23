@@ -3,8 +3,6 @@ package org.apache.helix.ipc;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import org.apache.helix.*;
-import org.apache.helix.ipc.HelixIPCCallback;
-import org.apache.helix.ipc.HelixIPCMessageCodec;
 import org.apache.helix.ipc.netty.NettyHelixIPC;
 import org.apache.helix.resolver.HelixMessageScope;
 import org.apache.helix.resolver.HelixResolver;
@@ -31,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class TestNettyHelixActor extends ZkUnitTestBase {
+public class TestNettyHelixIPC extends ZkUnitTestBase {
 
     private static final String CLUSTER_NAME = "TEST_CLUSTER";
     private static final String RESOURCE_NAME = "MyResource";
