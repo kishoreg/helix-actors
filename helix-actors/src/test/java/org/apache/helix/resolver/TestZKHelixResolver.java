@@ -1,4 +1,4 @@
-package org.apache.helix.ipc.resolver;
+package org.apache.helix.resolver;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -23,7 +23,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.ZkUnitTestBase;
-import org.apache.helix.ipc.resolver.zk.ZKHelixResolver;
+import org.apache.helix.resolver.zk.ZKHelixResolver;
 import org.apache.helix.integration.manager.ClusterControllerManager;
 import org.apache.helix.integration.manager.MockParticipantManager;
 import org.apache.helix.model.ExternalView;

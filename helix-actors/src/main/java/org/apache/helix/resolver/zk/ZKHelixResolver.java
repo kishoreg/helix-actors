@@ -1,4 +1,4 @@
-package org.apache.helix.ipc.resolver.zk;
+package org.apache.helix.resolver.zk;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -22,10 +22,10 @@ package org.apache.helix.ipc.resolver.zk;
 import org.apache.helix.HelixManager;
 import org.apache.helix.HelixManagerFactory;
 import org.apache.helix.InstanceType;
-import org.apache.helix.ipc.resolver.AbstractHelixResolver;
+import org.apache.helix.resolver.AbstractHelixResolver;
 
 /**
- * A ZooKeeper-specific {@link org.apache.helix.ipc.resolver.HelixResolver}
+ * A ZooKeeper-specific {@link org.apache.helix.resolver.HelixResolver}
  */
 public class ZKHelixResolver extends AbstractHelixResolver {
   private final String _zkAddress;

@@ -1,13 +1,14 @@
-package org.apache.helix.ipc.netty;
+package org.apache.helix.ipc;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import org.apache.helix.*;
-import org.apache.helix.ipc.api.HelixIPCCallback;
-import org.apache.helix.ipc.api.HelixIPCMessageCodec;
-import org.apache.helix.ipc.resolver.HelixMessageScope;
-import org.apache.helix.ipc.resolver.HelixResolver;
-import org.apache.helix.ipc.resolver.zk.ZKHelixResolver;
+import org.apache.helix.ipc.HelixIPCCallback;
+import org.apache.helix.ipc.HelixIPCMessageCodec;
+import org.apache.helix.ipc.netty.NettyHelixIPC;
+import org.apache.helix.resolver.HelixMessageScope;
+import org.apache.helix.resolver.HelixResolver;
+import org.apache.helix.resolver.zk.ZKHelixResolver;
 import org.apache.helix.controller.HelixControllerMain;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.Message;

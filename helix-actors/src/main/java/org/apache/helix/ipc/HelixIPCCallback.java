@@ -1,6 +1,6 @@
-package org.apache.helix.ipc.api;
+package org.apache.helix.ipc;
 
-import org.apache.helix.ipc.resolver.HelixMessageScope;
+import org.apache.helix.resolver.HelixMessageScope;
 
 import java.util.UUID;
 

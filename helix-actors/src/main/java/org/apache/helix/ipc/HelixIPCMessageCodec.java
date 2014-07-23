@@ -1,4 +1,4 @@
-package org.apache.helix.ipc.api;
+package org.apache.helix.ipc;
 
 import io.netty.buffer.ByteBuf;
 
