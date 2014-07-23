@@ -13,7 +13,6 @@ public class NettyHelixIPCStats implements NettyHelixIPCStatsMBean {
 
     // Aggregate stats are over the last 5 minutes
     private static final int COLLECTION_PERIOD_SECONDS = 5 * 60;
-    private static final int SAMPLE_INTERVAL_SECONDS = 1;
 
     private final AtomicLong messageCount = new AtomicLong();
     private final AtomicLong bytesCount = new AtomicLong();
@@ -84,7 +83,7 @@ public class NettyHelixIPCStats implements NettyHelixIPCStatsMBean {
                     messageStats.addValue(messageCount.get());
                     bytesStats.addValue(bytesCount.get());
                 }
-            }, 0, SAMPLE_INTERVAL_SECONDS, TimeUnit.SECONDS);
+            }, 0, 1, TimeUnit.SECONDS); // collect every 1 second (fixed)
         }
     }
 
