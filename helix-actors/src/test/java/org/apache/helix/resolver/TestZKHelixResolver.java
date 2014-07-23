@@ -98,20 +98,23 @@ public class TestZKHelixResolver extends ZkUnitTestBase {
   @Test
   public void testResolution() {
     HelixMessageScope clusterScope = new HelixMessageScope.Builder().cluster(CLUSTER_NAME).build();
-    Map<String, InetSocketAddress> clusterScopedInstances = _resolver.resolve(clusterScope);
-    Assert.assertTrue(clusterScopedInstances.values().containsAll(_socketMap.values()), "Expected "
-        + _socketMap.values() + ", found " + clusterScopedInstances);
+    _resolver.resolve(clusterScope);
+    Assert.assertNotNull(clusterScope.getAddresses());
+    Assert.assertTrue(clusterScope.getAddresses().values().containsAll(_socketMap.values()), "Expected "
+        + _socketMap.values() + ", found " + clusterScope.getAddresses());
 
     HelixMessageScope resourceScope =
         new HelixMessageScope.Builder().cluster(CLUSTER_NAME).resource(RESOURCE_NAME).build();
-    Map<String, InetSocketAddress> resourceScopedInstances = _resolver.resolve(resourceScope);
-    Assert.assertTrue(resourceScopedInstances.values().containsAll(_socketMap.values()), "Expected "
-        + _socketMap.values() + ", found " + resourceScopedInstances);
+    _resolver.resolve(resourceScope);
+    Assert.assertNotNull(resourceScope.getAddresses());
+    Assert.assertTrue(resourceScope.getAddresses().values().containsAll(_socketMap.values()), "Expected "
+        + _socketMap.values() + ", found " + resourceScope.getAddresses());
 
     HelixMessageScope partition0Scope =
         new HelixMessageScope.Builder().cluster(CLUSTER_NAME).resource(RESOURCE_NAME)
             .partition(RESOURCE_NAME + "_0").build();
-    Map<String, InetSocketAddress> partition0ScopedInstances = _resolver.resolve(partition0Scope);
+    _resolver.resolve(partition0Scope);
+    Assert.assertNotNull(partition0Scope.getAddresses());
     ExternalView externalView =
         _setupTool.getClusterManagementTool().getResourceExternalView(CLUSTER_NAME, RESOURCE_NAME);
     Set<String> instanceSet = externalView.getStateMap(RESOURCE_NAME + "_0").keySet();
@@ -119,8 +122,8 @@ public class TestZKHelixResolver extends ZkUnitTestBase {
     for (String instanceName : instanceSet) {
       expectedSocketAddrs.add(_socketMap.get(instanceName));
     }
-    Assert.assertEquals(partition0ScopedInstances.values(), expectedSocketAddrs,
-            "Expected " + expectedSocketAddrs + ", found " + partition0ScopedInstances.values());
+    Assert.assertEquals(partition0Scope.getAddresses().values(), expectedSocketAddrs,
+            "Expected " + expectedSocketAddrs + ", found " + partition0Scope.getAddresses().values());
   }
 
   @AfterClass

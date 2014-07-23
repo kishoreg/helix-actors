@@ -29,10 +29,7 @@ import org.apache.helix.model.InstanceConfig;
 import org.apache.log4j.Logger;
 
 import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -76,13 +73,13 @@ public abstract class AbstractHelixResolver implements HelixResolver {
   }
 
   @Override
-  public Map<String, InetSocketAddress> resolve(HelixMessageScope scope) {
+  public void resolve(HelixMessageScope scope) {
     if (!scope.isValid()) {
       LOG.error("Scope " + scope + " is not valid!");
-      return Collections.emptyMap();
+      scope.setAddresses(new HashMap<String, InetSocketAddress>());
     } else if (!_isConnected) {
       LOG.error("Cannot resolve " + scope + " without first connecting!");
-      return Collections.emptyMap();
+      scope.setAddresses(new HashMap<String, InetSocketAddress>());
     }
 
     // Connect or refresh connection
@@ -149,7 +146,7 @@ public abstract class AbstractHelixResolver implements HelixResolver {
         result.put(participant.getInstanceName(), new InetSocketAddress(participant.getHostName(), Integer.valueOf(ipcPort)));
       }
     }
-    return result;
+    scope.setAddresses(result);
   }
 
   @Override

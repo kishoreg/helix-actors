@@ -21,6 +21,9 @@ package org.apache.helix.resolver;
 
 import com.google.common.base.Objects;
 
+import java.net.InetSocketAddress;
+import java.util.Map;
+
 /**
  * A definition of the addressing scope of a message.
  * TODO: this should probably return some form of URI/URN so that we can standardize and generalize
@@ -31,6 +34,8 @@ public class HelixMessageScope {
   private final String _resource;
   private final String _partition;
   private final String _state;
+
+  private Map<String, InetSocketAddress> _addresses;
 
   private HelixMessageScope(String cluster, String resource, String partition, String state) {
     _cluster = cluster;
@@ -74,6 +79,14 @@ public class HelixMessageScope {
 
   public String getState() {
     return _state;
+  }
+
+  public void setAddresses(Map<String, InetSocketAddress> addresses) {
+    _addresses = addresses;
+  }
+
+  public Map<String, InetSocketAddress> getAddresses() {
+    return _addresses;
   }
 
   public boolean isValid() {

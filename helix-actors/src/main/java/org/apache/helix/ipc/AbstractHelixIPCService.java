@@ -43,7 +43,6 @@ public abstract class AbstractHelixIPCService implements HelixIPCService {
 
     @Override
     public abstract void send(HelixMessageScope scope,
-                              Map<String, InetSocketAddress> addresses,
                               int messageType,
                               UUID messageId,
                               Object message);

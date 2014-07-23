@@ -148,7 +148,6 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
      */
     @Override
     public void send(HelixMessageScope scope,
-                     Map<String, InetSocketAddress> addresses,
                      int messageType,
                      UUID messageId,
                      Object message) {
@@ -164,7 +163,10 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                 EMPTY_BYTES : scope.getCluster().getBytes();
 
         // Send message(s)
-        for (Map.Entry<String, InetSocketAddress> entry : addresses.entrySet()) {
+        if (scope.getAddresses() == null) {
+            throw new IllegalArgumentException("Cannot send message to unresolved scope");
+        }
+        for (Map.Entry<String, InetSocketAddress> entry : scope.getAddresses().entrySet()) {
             try {
                 // Get a channel (lazily connect)
                 Channel channel = null;

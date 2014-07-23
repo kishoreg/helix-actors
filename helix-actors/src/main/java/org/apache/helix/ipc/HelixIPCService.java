@@ -27,9 +27,13 @@ public interface HelixIPCService {
 
     /**
      * Sends a message to one or more nodes, and return the number of messages sent
+     *
+     * <p>
+     *     The scope must have been resolved first using
+     *     {@link org.apache.helix.resolver.HelixResolver#resolve(org.apache.helix.resolver.HelixMessageScope)}
+     * </p>
      */
     void send(HelixMessageScope scope,
-              Map<String, InetSocketAddress> addresses,
               int messageType,
               UUID messageId,
               Object message);

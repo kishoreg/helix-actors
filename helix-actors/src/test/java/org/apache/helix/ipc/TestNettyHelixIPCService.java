@@ -172,7 +172,9 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
                         .state("ONLINE")
                         .build();
 
-                firstIPC.send(scope, firstResolver.resolve(scope), messageType, UUID.randomUUID(), "Hello world " + i);
+                firstResolver.resolve(scope);
+
+                firstIPC.send(scope, messageType, UUID.randomUUID(), "Hello world " + i);
             }
         }
 
@@ -186,7 +188,9 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
                         .state("ONLINE")
                         .build();
 
-                secondIPC.send(scope, secondResolver.resolve(scope), messageType, UUID.randomUUID(), "Hello world " + i);
+                secondResolver.resolve(scope);
+
+                secondIPC.send(scope, messageType, UUID.randomUUID(), "Hello world " + i);
             }
         }
 

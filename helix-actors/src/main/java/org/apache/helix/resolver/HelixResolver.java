@@ -43,9 +43,12 @@ public interface HelixResolver {
   boolean isConnected();
 
   /**
-   * Resolve a scope
-   * @param scope the scope describing the instances to address
-   * @return Set of all InetSocketAddress (if available) of matching participants
+   * Resolve a scope.
+   *
+   * <p>
+   *     After this is called, {@link HelixMessageScope#getAddresses()} for the provided scope
+   *     will return a non-null value.
+   * </p>
    */
-  Map<String, InetSocketAddress> resolve(HelixMessageScope scope);
+  void resolve(HelixMessageScope scope);
 }
