@@ -3,7 +3,7 @@ package org.apache.helix.ipc;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import org.apache.helix.*;
-import org.apache.helix.ipc.netty.NettyHelixIPC;
+import org.apache.helix.ipc.netty.NettyHelixIPCService;
 import org.apache.helix.resolver.HelixMessageScope;
 import org.apache.helix.resolver.HelixResolver;
 import org.apache.helix.resolver.zk.ZKHelixResolver;
@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class TestNettyHelixIPC extends ZkUnitTestBase {
+public class TestNettyHelixIPCService extends ZkUnitTestBase {
 
     private static final String CLUSTER_NAME = "TEST_CLUSTER";
     private static final String RESOURCE_NAME = "MyResource";
@@ -103,10 +103,10 @@ public class TestNettyHelixIPC extends ZkUnitTestBase {
     public void testMessagePassing() throws Exception {
         int numMessages = 1000;
 
-        // Start first Actor w/ counter
+        // Start first IPC service w/ counter
         final ConcurrentMap<String, AtomicInteger> firstCounts = new ConcurrentHashMap<String, AtomicInteger>();
-        NettyHelixIPC<String> firstActor = new NettyHelixIPC<String>(firstNode, firstPort, CODEC, firstResolver);
-        firstActor.register(new HelixIPCCallback<String>() {
+        NettyHelixIPCService<String> firstIPC = new NettyHelixIPCService<String>(firstNode, firstPort, CODEC, firstResolver);
+        firstIPC.register(new HelixIPCCallback<String>() {
             @Override
             public void onMessage(HelixMessageScope scope, UUID messageId, String message) {
                 String key = scope.getPartition() + ":" + scope.getState();
@@ -114,12 +114,12 @@ public class TestNettyHelixIPC extends ZkUnitTestBase {
                 firstCounts.get(key).incrementAndGet();
             }
         });
-        firstActor.start();
+        firstIPC.start();
 
-        // Start second Actor w/ counter
+        // Start second IPC Service w/ counter
         final ConcurrentMap<String, AtomicInteger> secondCounts = new ConcurrentHashMap<String, AtomicInteger>();
-        NettyHelixIPC<String> secondActor = new NettyHelixIPC<String>(secondNode, secondPort, CODEC, secondResolver);
-        secondActor.register(new HelixIPCCallback<String>() {
+        NettyHelixIPCService<String> secondIPC = new NettyHelixIPCService<String>(secondNode, secondPort, CODEC, secondResolver);
+        secondIPC.register(new HelixIPCCallback<String>() {
             @Override
             public void onMessage(HelixMessageScope scope, UUID messageId, String message) {
                 String key = scope.getPartition() + ":" + scope.getState();
@@ -127,7 +127,7 @@ public class TestNettyHelixIPC extends ZkUnitTestBase {
                 secondCounts.get(key).incrementAndGet();
             }
         });
-        secondActor.start();
+        secondIPC.start();
 
         // Allow resolver callbacks to fire
         Thread.sleep(500);
@@ -147,7 +147,7 @@ public class TestNettyHelixIPC extends ZkUnitTestBase {
         // And use first node to send messages to them
         for (String partitionName : secondPartitions) {
             for (int i = 0; i < numMessages; i++) {
-                firstActor.send(new HelixMessageScope.Builder()
+                firstIPC.send(new HelixMessageScope.Builder()
                         .cluster(firstNode.getClusterName())
                         .resource(RESOURCE_NAME)
                         .partition(partitionName)
@@ -158,7 +158,7 @@ public class TestNettyHelixIPC extends ZkUnitTestBase {
         // Loopback
         for (String partitionName : secondPartitions) {
             for (int i = 0; i < numMessages; i++) {
-                secondActor.send(new HelixMessageScope.Builder()
+                secondIPC.send(new HelixMessageScope.Builder()
                         .cluster(secondNode.getClusterName())
                         .resource(RESOURCE_NAME)
                         .partition(partitionName)

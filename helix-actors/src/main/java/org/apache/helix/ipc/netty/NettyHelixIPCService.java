@@ -18,7 +18,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.helix.HelixManager;
-import org.apache.helix.ipc.HelixIPC;
+import org.apache.helix.ipc.HelixIPCService;
 import org.apache.helix.ipc.HelixIPCCallback;
 import org.apache.helix.ipc.HelixIPCMessageCodec;
 import org.apache.helix.resolver.HelixMessageScope;
@@ -82,9 +82,9 @@ import java.util.concurrent.atomic.AtomicReference;
  </pre>
  * </p>
  */
-public class NettyHelixIPC<T> implements HelixIPC<T> {
+public class NettyHelixIPCService<T> implements HelixIPCService<T> {
 
-    private static final Logger LOG = Logger.getLogger(NettyHelixIPC.class);
+    private static final Logger LOG = Logger.getLogger(NettyHelixIPCService.class);
     private static final String IPC_PORT = "IPC_PORT";
     private static final byte[] EMPTY_BYTES = new byte[0];
     private static final int DEFAULT_MESSAGE_VERSION = 0;
@@ -118,7 +118,7 @@ public class NettyHelixIPC<T> implements HelixIPC<T> {
      * @param codec
      *  Codec for decoding / encoding actual message
      */
-    public NettyHelixIPC(HelixManager manager, int port, HelixIPCMessageCodec<T> codec, HelixResolver resolver) {
+    public NettyHelixIPCService(HelixManager manager, int port, HelixIPCMessageCodec<T> codec, HelixResolver resolver) {
         this.isShutdown = new AtomicBoolean(true);
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
         this.manager = manager;

@@ -14,7 +14,7 @@ import java.util.UUID;
  * @param <T>
  *   The message type
  */
-public interface HelixIPC<T> {
+public interface HelixIPCService<T> {
     /**
      * Call this before sending any messages, and must be called before callbacks can fire
      */
