@@ -87,8 +87,7 @@ public class NettyHelixIPCService implements HelixIPCService {
     private static final Logger LOG = Logger.getLogger(NettyHelixIPCService.class);
     private static final String IPC_PORT = "IPC_PORT";
     private static final byte[] EMPTY_BYTES = new byte[0];
-    private static final int DEFAULT_MESSAGE_VERSION = 0;
-    private static final int DEFAULT_MESSAGE_TYPE = 0;
+    private static final int MESSAGE_VERSION = 1;
 
     // Parameters for length header field of message (tells decoder to interpret but preserve length field in message)
     private static final int MAX_FRAME_LENGTH = 1024 * 1024;
@@ -237,8 +236,8 @@ public class NettyHelixIPCService implements HelixIPCService {
                 // Build message header
                 ByteBuf headerBuf = PooledByteBufAllocator.DEFAULT.buffer();
                 headerBuf.writeInt(totalLength)
-                        .writeInt(DEFAULT_MESSAGE_VERSION)
-                        .writeInt(DEFAULT_MESSAGE_TYPE)
+                        .writeInt(MESSAGE_VERSION)
+                        .writeInt(messageType)
                         .writeLong(messageId.getMostSignificantBits())
                         .writeLong(messageId.getLeastSignificantBits())
                         .writeInt(clusterBytes.length)

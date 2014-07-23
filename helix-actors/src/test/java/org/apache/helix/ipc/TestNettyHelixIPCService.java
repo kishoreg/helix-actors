@@ -103,7 +103,7 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
     @Test
     public void testMessagePassing() throws Exception {
         int numMessages = 1000;
-        int messageType = 0;
+        int messageType = HelixIPCConstants.FIRST_CUSTOM_MESSAGE_TYPE;
 
         HelixIPCMessageCodecRegistry codecRegistry = new HelixIPCMessageCodecRegistry();
         codecRegistry.put(messageType, CODEC);
@@ -156,7 +156,7 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
                         .cluster(firstNode.getClusterName())
                         .resource(RESOURCE_NAME)
                         .partition(partitionName)
-                        .state("ONLINE").build(), 0, UUID.randomUUID(), "Hello world " + i);
+                        .state("ONLINE").build(), messageType, UUID.randomUUID(), "Hello world " + i);
             }
         }
 
@@ -167,7 +167,7 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
                         .cluster(secondNode.getClusterName())
                         .resource(RESOURCE_NAME)
                         .partition(partitionName)
-                        .state("ONLINE").build(), 0, UUID.randomUUID(), "Hello world " + i);
+                        .state("ONLINE").build(), messageType, UUID.randomUUID(), "Hello world " + i);
             }
         }
 
