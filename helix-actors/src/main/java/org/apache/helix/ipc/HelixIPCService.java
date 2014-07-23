@@ -13,7 +13,7 @@ import java.util.UUID;
  *   Messages are sent asynchronously using {@link #send}, and handled by callbacks registered via {@link #registerCallback}
  * </p>
  */
-public interface HelixIPCServce {
+public interface HelixIPCService {
 
     /**
      * Call this before sending any messages, and must be called before callbacks can fire

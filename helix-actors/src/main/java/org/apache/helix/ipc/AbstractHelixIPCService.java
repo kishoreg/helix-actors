@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentMap;
  *   Messages are sent asynchronously using {@link #send}, and handled by callbacks registered via {@link #registerCallback}
  * </p>
  */
-public abstract class AbstractHelixIPCService implements HelixIPCServce {
+public abstract class AbstractHelixIPCService implements HelixIPCService {
 
     protected final String instanceName;
     protected final int port;
