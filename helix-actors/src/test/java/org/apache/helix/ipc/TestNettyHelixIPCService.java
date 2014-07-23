@@ -121,7 +121,7 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
 
         // Start first IPC service w/ counter
         final ConcurrentMap<String, AtomicInteger> firstCounts = new ConcurrentHashMap<String, AtomicInteger>();
-        NettyHelixIPCService firstIPC = new NettyHelixIPCService(firstNode.getInstanceName(), firstPort, firstResolver);
+        NettyHelixIPCService firstIPC = new NettyHelixIPCService(firstNode.getInstanceName(), firstPort);
         firstIPC.registerCallback(messageType, new HelixIPCCallback() {
             @Override
             public void onMessage(HelixMessageScope scope, UUID messageId, Object message) {
@@ -135,7 +135,7 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
 
         // Start second IPC Service w/ counter
         final ConcurrentMap<String, AtomicInteger> secondCounts = new ConcurrentHashMap<String, AtomicInteger>();
-        NettyHelixIPCService secondIPC = new NettyHelixIPCService(secondNode.getInstanceName(), secondPort, secondResolver);
+        NettyHelixIPCService secondIPC = new NettyHelixIPCService(secondNode.getInstanceName(), secondPort);
         secondIPC.registerCallback(messageType, new HelixIPCCallback() {
             @Override
             public void onMessage(HelixMessageScope scope, UUID messageId, Object message) {
@@ -165,22 +165,28 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
         // And use first node to send messages to them
         for (String partitionName : secondPartitions) {
             for (int i = 0; i < numMessages; i++) {
-                firstIPC.send(new HelixMessageScope.Builder()
+                HelixMessageScope scope = new HelixMessageScope.Builder()
                         .cluster(firstNode.getClusterName())
                         .resource(RESOURCE_NAME)
                         .partition(partitionName)
-                        .state("ONLINE").build(), messageType, UUID.randomUUID(), "Hello world " + i);
+                        .state("ONLINE")
+                        .build();
+
+                firstIPC.send(scope, firstResolver.resolve(scope), messageType, UUID.randomUUID(), "Hello world " + i);
             }
         }
 
         // Loopback
         for (String partitionName : secondPartitions) {
             for (int i = 0; i < numMessages; i++) {
-                secondIPC.send(new HelixMessageScope.Builder()
+                HelixMessageScope scope = new HelixMessageScope.Builder()
                         .cluster(secondNode.getClusterName())
                         .resource(RESOURCE_NAME)
                         .partition(partitionName)
-                        .state("ONLINE").build(), messageType, UUID.randomUUID(), "Hello world " + i);
+                        .state("ONLINE")
+                        .build();
+
+                secondIPC.send(scope, secondResolver.resolve(scope), messageType, UUID.randomUUID(), "Hello world " + i);
             }
         }
 

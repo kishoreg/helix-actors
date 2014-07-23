@@ -3,6 +3,8 @@ package org.apache.helix.ipc;
 import org.apache.helix.resolver.HelixMessageScope;
 import org.apache.helix.resolver.HelixResolver;
 
+import java.net.InetSocketAddress;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -18,7 +20,6 @@ public abstract class AbstractHelixIPCService {
 
     protected final String instanceName;
     protected final int port;
-    protected final HelixResolver resolver;
     protected final ConcurrentMap<Integer, HelixIPCCallback> callbacks;
     protected final ConcurrentMap<Integer, HelixIPCMessageCodec> messageCodecs;
 
@@ -27,15 +28,10 @@ public abstract class AbstractHelixIPCService {
      *  The Helix instance name on which this IPC service is running.
      * @param port
      *  The port on which to listen for messages
-     * @param resolver
-     *  Resolves {@link HelixMessageScope}s to physical addresses.
      */
-    public AbstractHelixIPCService(String instanceName,
-                                   int port,
-                                   HelixResolver resolver) {
+    public AbstractHelixIPCService(String instanceName, int port) {
         this.instanceName = instanceName;
         this.port = port;
-        this.resolver = resolver;
         this.callbacks = new ConcurrentHashMap<Integer, HelixIPCCallback>();
         this.messageCodecs = new ConcurrentHashMap<Integer, HelixIPCMessageCodec>();
     }
@@ -53,7 +49,11 @@ public abstract class AbstractHelixIPCService {
     /**
      * Sends a message to one or more nodes, and return the number of messages sent
      */
-    public abstract int send(HelixMessageScope scope, int messageType, UUID messageId, Object message);
+    public abstract int send(HelixMessageScope scope,
+                             Map<String, InetSocketAddress> addresses,
+                             int messageType,
+                             UUID messageId,
+                             Object message);
 
     /**
      * Register a callback for a given message type.

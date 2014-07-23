@@ -18,10 +18,8 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.helix.ipc.AbstractHelixIPCService;
-import org.apache.helix.ipc.HelixIPCCallback;
 import org.apache.helix.ipc.HelixIPCMessageCodec;
 import org.apache.helix.resolver.HelixMessageScope;
-import org.apache.helix.resolver.HelixResolver;
 import org.apache.log4j.Logger;
 
 import javax.management.ObjectName;
@@ -84,10 +82,8 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
     private Bootstrap clientBootstrap;
     private NettyHelixIPCStats stats;
 
-    public NettyHelixIPCService(String instanceName,
-                                int port,
-                                HelixResolver resolver) {
-        super(instanceName, port, resolver);
+    public NettyHelixIPCService(String instanceName, int port) {
+        super(instanceName, port);
         this.isShutdown = new AtomicBoolean(true);
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
     }
@@ -149,15 +145,16 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
      * Sends a message to all partitions with a given state in the cluster.
      */
     @Override
-    public int send(HelixMessageScope scope, int messageType, UUID messageId, Object message) {
+    public int send(HelixMessageScope scope,
+                    Map<String, InetSocketAddress> addresses,
+                    int messageType,
+                    UUID messageId,
+                    Object message) {
         // Get codec
         HelixIPCMessageCodec codec = messageCodecs.get(messageType);
         if (codec == null) {
             throw new IllegalArgumentException("No codec for message type " + messageType);
         }
-
-        // Resolve addresses
-        Map<String, InetSocketAddress> addresses = resolver.resolve(scope);
 
         // Encode message
         ByteBuf messageByteBuf = codec.encode(message);
