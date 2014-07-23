@@ -86,9 +86,8 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
 
     public NettyHelixIPCService(String instanceName,
                                 int port,
-                                HelixIPCMessageCodec.Registry codecRegistry,
                                 HelixResolver resolver) {
-        super(instanceName, port, codecRegistry, resolver);
+        super(instanceName, port, resolver);
         this.isShutdown = new AtomicBoolean(true);
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
     }
@@ -152,7 +151,7 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
     @Override
     public int send(HelixMessageScope scope, int messageType, UUID messageId, Object message) {
         // Get codec
-        HelixIPCMessageCodec codec = codecRegistry.get(messageType);
+        HelixIPCMessageCodec codec = messageCodecs.get(messageType);
         if (codec == null) {
             throw new IllegalArgumentException("No codec for message type " + messageType);
         }
@@ -253,7 +252,7 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
 
             // Message type
             int messageType = byteBuf.readInt();
-            HelixIPCMessageCodec codec = codecRegistry.get(messageType);
+            HelixIPCMessageCodec codec = messageCodecs.get(messageType);
             if (codec == null) {
                 throw new IllegalStateException("Received message for which there is no codec: type=" + messageType);
             }

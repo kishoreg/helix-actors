@@ -11,36 +11,33 @@ import java.util.concurrent.ConcurrentMap;
  * Allows message passing among instances in Helix clusters.
  *
  * <p>
- *   Messages are sent asynchronously using {@link #send}, and handled by callbacks registered via {@link #register}
+ *   Messages are sent asynchronously using {@link #send}, and handled by callbacks registered via {@link #registerCallback}
  * </p>
  */
 public abstract class AbstractHelixIPCService {
 
     protected final String instanceName;
     protected final int port;
-    protected final HelixIPCMessageCodec.Registry codecRegistry;
     protected final HelixResolver resolver;
     protected final ConcurrentMap<Integer, HelixIPCCallback> callbacks;
+    protected final ConcurrentMap<Integer, HelixIPCMessageCodec> messageCodecs;
 
     /**
      * @param instanceName
      *  The Helix instance name on which this IPC service is running.
      * @param port
      *  The port on which to listen for messages
-     * @param codecRegistry
-     *  Should have a codec registered for every message type passed to {@link #send}
      * @param resolver
      *  Resolves {@link HelixMessageScope}s to physical addresses.
      */
     public AbstractHelixIPCService(String instanceName,
                                    int port,
-                                   HelixIPCMessageCodec.Registry codecRegistry,
                                    HelixResolver resolver) {
         this.instanceName = instanceName;
         this.port = port;
-        this.codecRegistry = codecRegistry;
         this.resolver = resolver;
         this.callbacks = new ConcurrentHashMap<Integer, HelixIPCCallback>();
+        this.messageCodecs = new ConcurrentHashMap<Integer, HelixIPCMessageCodec>();
     }
 
     /**
@@ -61,7 +58,18 @@ public abstract class AbstractHelixIPCService {
     /**
      * Register a callback for a given message type.
      */
-    public void register(int messageType, HelixIPCCallback callback) {
+    public void registerCallback(int messageType, HelixIPCCallback callback) {
         this.callbacks.put(messageType, callback);
+    }
+
+    /**
+     * Registers a codec for a given message type (must be done before call to {@link #send})
+     */
+    public void registerMessageCodec(int messageType, HelixIPCMessageCodec messageCodec) {
+        if (messageType < HelixIPCConstants.FIRST_CUSTOM_MESSAGE_TYPE) {
+            throw new IllegalArgumentException("First allowed custom message type is "
+                    + HelixIPCConstants.FIRST_CUSTOM_MESSAGE_TYPE);
+        }
+        this.messageCodecs.put(messageType, messageCodec);
     }
 }

@@ -107,9 +107,6 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
         int numMessages = 1000;
         int messageType = HelixIPCConstants.FIRST_CUSTOM_MESSAGE_TYPE;
 
-        HelixIPCMessageCodec.Registry codecRegistry = new HelixIPCMessageCodec.Registry();
-        codecRegistry.put(messageType, CODEC);
-
         // Configure
         firstNode.getConfigAccessor().set(
                 new HelixConfigScopeBuilder(HelixConfigScope.ConfigScopeProperty.PARTICIPANT)
@@ -124,8 +121,8 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
 
         // Start first IPC service w/ counter
         final ConcurrentMap<String, AtomicInteger> firstCounts = new ConcurrentHashMap<String, AtomicInteger>();
-        NettyHelixIPCService firstIPC = new NettyHelixIPCService(firstNode.getInstanceName(), firstPort, codecRegistry, firstResolver);
-        firstIPC.register(messageType, new HelixIPCCallback() {
+        NettyHelixIPCService firstIPC = new NettyHelixIPCService(firstNode.getInstanceName(), firstPort, firstResolver);
+        firstIPC.registerCallback(messageType, new HelixIPCCallback() {
             @Override
             public void onMessage(HelixMessageScope scope, UUID messageId, Object message) {
                 String key = scope.getPartition() + ":" + scope.getState();
@@ -133,12 +130,13 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
                 firstCounts.get(key).incrementAndGet();
             }
         });
+        firstIPC.registerMessageCodec(messageType, CODEC);
         firstIPC.start();
 
         // Start second IPC Service w/ counter
         final ConcurrentMap<String, AtomicInteger> secondCounts = new ConcurrentHashMap<String, AtomicInteger>();
-        NettyHelixIPCService secondIPC = new NettyHelixIPCService(secondNode.getInstanceName(), secondPort, codecRegistry, secondResolver);
-        secondIPC.register(messageType, new HelixIPCCallback() {
+        NettyHelixIPCService secondIPC = new NettyHelixIPCService(secondNode.getInstanceName(), secondPort, secondResolver);
+        secondIPC.registerCallback(messageType, new HelixIPCCallback() {
             @Override
             public void onMessage(HelixMessageScope scope, UUID messageId, Object message) {
                 String key = scope.getPartition() + ":" + scope.getState();
@@ -146,6 +144,7 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
                 secondCounts.get(key).incrementAndGet();
             }
         });
+        secondIPC.registerMessageCodec(messageType, CODEC);
         secondIPC.start();
 
         // Allow resolver callbacks to fire
