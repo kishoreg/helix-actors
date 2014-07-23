@@ -1,6 +1,6 @@
-package org.apache.helix.actor.netty;
+package org.apache.helix.ipc.netty;
 
-public interface NettyHelixActorStatsMBean {
+public interface NettyHelixIPCStatsMBean {
     long getMessageCount();
     long getBytesCount();
     long getErrorCount();

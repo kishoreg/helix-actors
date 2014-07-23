@@ -1,13 +1,13 @@
-package org.apache.helix.actor.netty;
+package org.apache.helix.ipc.netty;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import org.apache.helix.*;
-import org.apache.helix.actor.api.HelixActorCallback;
-import org.apache.helix.actor.api.HelixActorMessageCodec;
-import org.apache.helix.actor.resolver.HelixMessageScope;
-import org.apache.helix.actor.resolver.HelixResolver;
-import org.apache.helix.actor.resolver.zk.ZKHelixResolver;
+import org.apache.helix.ipc.api.HelixIPCCallback;
+import org.apache.helix.ipc.api.HelixIPCMessageCodec;
+import org.apache.helix.ipc.resolver.HelixMessageScope;
+import org.apache.helix.ipc.resolver.HelixResolver;
+import org.apache.helix.ipc.resolver.zk.ZKHelixResolver;
 import org.apache.helix.controller.HelixControllerMain;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.Message;
@@ -34,7 +34,7 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
 
     private static final String CLUSTER_NAME = "TEST_CLUSTER";
     private static final String RESOURCE_NAME = "MyResource";
-    private static final HelixActorMessageCodec<String> CODEC = new HelixActorMessageCodec<String>() {
+    private static final HelixIPCMessageCodec<String> CODEC = new HelixIPCMessageCodec<String>() {
         @Override
         public ByteBuf encode(String message) {
             return Unpooled.wrappedBuffer(message.getBytes());
@@ -106,8 +106,8 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
 
         // Start first Actor w/ counter
         final ConcurrentMap<String, AtomicInteger> firstCounts = new ConcurrentHashMap<String, AtomicInteger>();
-        NettyHelixActor<String> firstActor = new NettyHelixActor<String>(firstNode, firstPort, CODEC, firstResolver);
-        firstActor.register(new HelixActorCallback<String>() {
+        NettyHelixIPC<String> firstActor = new NettyHelixIPC<String>(firstNode, firstPort, CODEC, firstResolver);
+        firstActor.register(new HelixIPCCallback<String>() {
             @Override
             public void onMessage(HelixMessageScope scope, UUID messageId, String message) {
                 String key = scope.getPartition() + ":" + scope.getState();
@@ -119,8 +119,8 @@ public class TestNettyHelixActor extends ZkUnitTestBase {
 
         // Start second Actor w/ counter
         final ConcurrentMap<String, AtomicInteger> secondCounts = new ConcurrentHashMap<String, AtomicInteger>();
-        NettyHelixActor<String> secondActor = new NettyHelixActor<String>(secondNode, secondPort, CODEC, secondResolver);
-        secondActor.register(new HelixActorCallback<String>() {
+        NettyHelixIPC<String> secondActor = new NettyHelixIPC<String>(secondNode, secondPort, CODEC, secondResolver);
+        secondActor.register(new HelixIPCCallback<String>() {
             @Override
             public void onMessage(HelixMessageScope scope, UUID messageId, String message) {
                 String key = scope.getPartition() + ":" + scope.getState();

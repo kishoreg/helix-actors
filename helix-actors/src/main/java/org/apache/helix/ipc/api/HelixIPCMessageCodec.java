@@ -1,11 +1,11 @@
-package org.apache.helix.actor.api;
+package org.apache.helix.ipc.api;
 
 import io.netty.buffer.ByteBuf;
 
 /**
  * Encodes and decodes messages of type T to and from {@link io.netty.buffer.ByteBuf}s
  */
-public interface HelixActorMessageCodec<T> {
+public interface HelixIPCMessageCodec<T> {
     /**
      * Encodes a typed message into a {@link io.netty.buffer.ByteBuf}.
      *

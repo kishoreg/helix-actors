@@ -1,4 +1,4 @@
-package org.apache.helix.actor.resolver;
+package org.apache.helix.ipc.resolver;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one

@@ -1,4 +1,4 @@
-package org.apache.helix.actor.netty;
+package org.apache.helix.ipc.netty;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
@@ -18,11 +18,11 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.helix.HelixManager;
-import org.apache.helix.actor.api.HelixActor;
-import org.apache.helix.actor.api.HelixActorCallback;
-import org.apache.helix.actor.api.HelixActorMessageCodec;
-import org.apache.helix.actor.resolver.HelixMessageScope;
-import org.apache.helix.actor.resolver.HelixResolver;
+import org.apache.helix.ipc.api.HelixIPC;
+import org.apache.helix.ipc.api.HelixIPCCallback;
+import org.apache.helix.ipc.api.HelixIPCMessageCodec;
+import org.apache.helix.ipc.resolver.HelixMessageScope;
+import org.apache.helix.ipc.resolver.HelixResolver;
 import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.builder.HelixConfigScopeBuilder;
 import org.apache.log4j.Logger;
@@ -78,10 +78,10 @@ import java.util.concurrent.atomic.AtomicReference;
  </pre>
  * </p>
  */
-public class NettyHelixActor<T> implements HelixActor<T> {
+public class NettyHelixIPC<T> implements HelixIPC<T> {
 
-    private static final Logger LOG = Logger.getLogger(NettyHelixActor.class);
-    private static final String ACTOR_PORT = "ACTOR_PORT";
+    private static final Logger LOG = Logger.getLogger(NettyHelixIPC.class);
+    private static final String IPC_PORT = "IPC_PORT";
     private static final byte[] EMPTY_BYTES = new byte[0];
 
     // Parameters for length header field of message (tells decoder to interpret but preserve length field in message)
@@ -96,13 +96,13 @@ public class NettyHelixActor<T> implements HelixActor<T> {
     private final ConcurrentMap<InetSocketAddress, Channel> channels;
     private final HelixManager manager;
     private final int port;
-    private final HelixActorMessageCodec<T> codec;
+    private final HelixIPCMessageCodec<T> codec;
     private final HelixResolver resolver;
-    private final AtomicReference<HelixActorCallback<T>> callback;
+    private final AtomicReference<HelixIPCCallback<T>> callback;
 
     private EventLoopGroup eventLoopGroup;
     private Bootstrap clientBootstrap;
-    private NettyHelixActorStats stats;
+    private NettyHelixIPCStats stats;
 
     /**
      * @param manager
@@ -112,14 +112,14 @@ public class NettyHelixActor<T> implements HelixActor<T> {
      * @param codec
      *  Codec for decoding / encoding actual message
      */
-    public NettyHelixActor(HelixManager manager, int port, HelixActorMessageCodec<T> codec, HelixResolver resolver) {
+    public NettyHelixIPC(HelixManager manager, int port, HelixIPCMessageCodec<T> codec, HelixResolver resolver) {
         this.isShutdown = new AtomicBoolean(true);
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
         this.manager = manager;
         this.port = port;
         this.codec = codec;
         this.resolver = resolver;
-        this.callback = new AtomicReference<HelixActorCallback<T>>();
+        this.callback = new AtomicReference<HelixIPCCallback<T>>();
     }
 
     /**
@@ -129,18 +129,18 @@ public class NettyHelixActor<T> implements HelixActor<T> {
         if (isShutdown.getAndSet(false)) {
             eventLoopGroup = new NioEventLoopGroup();
 
-            stats = new NettyHelixActorStats(eventLoopGroup);
+            stats = new NettyHelixIPCStats(eventLoopGroup);
             stats.start();
 
             ManagementFactory.getPlatformMBeanServer()
                     .registerMBean(stats, new ObjectName(
-                            "org.apache.helix:type=NettyHelixActorStats,name=" + manager.getInstanceName()));
+                            "org.apache.helix:type=NettyHelixIPCStats,name=" + manager.getInstanceName()));
 
             manager.getConfigAccessor().set(
                     new HelixConfigScopeBuilder(HelixConfigScope.ConfigScopeProperty.PARTICIPANT)
                             .forCluster(manager.getClusterName())
                             .forParticipant(manager.getInstanceName())
-                            .build(), ACTOR_PORT, String.valueOf(port));
+                            .build(), IPC_PORT, String.valueOf(port));
 
             new ServerBootstrap()
                     .group(eventLoopGroup)
@@ -266,7 +266,7 @@ public class NettyHelixActor<T> implements HelixActor<T> {
      * Register a callback which is called when this node receives a message.
      */
     @Override
-    public void register(HelixActorCallback<T> callback) {
+    public void register(HelixIPCCallback<T> callback) {
         if (!isShutdown.get()) {
             throw new IllegalStateException("Cannot register callback after started");
         }

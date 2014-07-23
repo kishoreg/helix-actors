@@ -1,4 +1,4 @@
-package org.apache.helix.actor.resolver;
+package org.apache.helix.ipc.resolver;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -23,7 +23,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.ZkUnitTestBase;
-import org.apache.helix.actor.resolver.zk.ZKHelixResolver;
+import org.apache.helix.ipc.resolver.zk.ZKHelixResolver;
 import org.apache.helix.integration.manager.ClusterControllerManager;
 import org.apache.helix.integration.manager.MockParticipantManager;
 import org.apache.helix.model.ExternalView;
@@ -70,14 +70,14 @@ public class TestZKHelixResolver extends ZkUnitTestBase {
     for (int i = 0; i < NUM_PARTICIPANTS; i++) {
       String host = "localhost";
       int port = i;
-      int actorPort = i + 100;
+      int ipcPort = i + 100;
       String instanceName = host + "_" + port;
       InstanceConfig config = new InstanceConfig(instanceName);
       config.setHostName(host);
       config.setPort(Integer.toString(port));
-      config.getRecord().setSimpleField("ACTOR_PORT", Integer.toString(actorPort));
+      config.getRecord().setSimpleField("IPC_PORT", Integer.toString(ipcPort));
       admin.addInstance(CLUSTER_NAME, config);
-      _socketMap.put(instanceName, new InetSocketAddress(host, actorPort));
+      _socketMap.put(instanceName, new InetSocketAddress(host, ipcPort));
       _participants[i] = new MockParticipantManager(ZK_ADDR, CLUSTER_NAME, instanceName);
       _participants[i].syncStart();
     }

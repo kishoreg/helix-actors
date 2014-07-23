@@ -1,4 +1,4 @@
-package org.apache.helix.actor.resolver.zk;
+package org.apache.helix.ipc.resolver;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,27 +19,33 @@ package org.apache.helix.actor.resolver.zk;
  * under the License.
  */
 
-import org.apache.helix.HelixManager;
-import org.apache.helix.HelixManagerFactory;
-import org.apache.helix.InstanceType;
-import org.apache.helix.actor.resolver.AbstractHelixResolver;
+import java.net.InetSocketAddress;
+import java.util.Map;
 
 /**
- * A ZooKeeper-specific {@link org.apache.helix.actor.resolver.HelixResolver}
+ * An interface that resolves a message scope to a direct address.
  */
-public class ZKHelixResolver extends AbstractHelixResolver {
-  private final String _zkAddress;
+public interface HelixResolver {
+  /**
+   * Initialize a connection for scope resolution.
+   */
+  void connect();
 
   /**
-   * Create a ZK-based Helix resolver
-   * @param zkConnectString the connection string to the ZooKeeper ensemble
+   * Tear down any state and open connections to Helix clusters.
    */
-  public ZKHelixResolver(String zkConnectString) {
-    _zkAddress = zkConnectString;
-  }
+  void disconnect();
 
-  @Override
-  protected HelixManager createManager(String cluster) {
-    return HelixManagerFactory.getZKHelixManager(cluster, null, InstanceType.SPECTATOR, _zkAddress);
-  }
+  /**
+   * Check the connection status
+   * @return true if connected, false otherwise
+   */
+  boolean isConnected();
+
+  /**
+   * Resolve a scope
+   * @param scope the scope describing the instances to address
+   * @return Set of all InetSocketAddress (if available) of matching participants
+   */
+  Map<String, InetSocketAddress> resolve(HelixMessageScope scope);
 }

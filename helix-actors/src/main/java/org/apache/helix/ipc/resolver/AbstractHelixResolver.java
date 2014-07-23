@@ -1,4 +1,4 @@
-package org.apache.helix.actor.resolver;
+package org.apache.helix.ipc.resolver;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -47,7 +47,7 @@ public abstract class AbstractHelixResolver implements HelixResolver {
   private static final int DEFAULT_THREAD_POOL_SIZE = 10;
   private static final long DEFAULT_LEASE_LENGTH_MS = 60 * 60 * 1000; // TODO: are these good
                                                                       // values?
-  private static final String ACTOR_PORT = "ACTOR_PORT";
+  private static final String IPC_PORT = "IPC_PORT";
   private final Map<String, Spectator> _connections;
   private boolean _isConnected;
   private ScheduledExecutorService _executor;
@@ -141,12 +141,12 @@ public abstract class AbstractHelixResolver implements HelixResolver {
     // Resolve those participants
     Map<String, InetSocketAddress> result = Maps.newHashMap();
     for (InstanceConfig participant : participants) {
-      String actorPort = participant.getRecord().getSimpleField(ACTOR_PORT);
-      if (actorPort == null) {
-        LOG.error("No actor address registered for target instance "
+      String ipcPort = participant.getRecord().getSimpleField(IPC_PORT);
+      if (ipcPort == null) {
+        LOG.error("No ipc address registered for target instance "
             + participant.getInstanceName() + ", skipping");
       } else {
-        result.put(participant.getInstanceName(), new InetSocketAddress(participant.getHostName(), Integer.valueOf(actorPort)));
+        result.put(participant.getInstanceName(), new InetSocketAddress(participant.getHostName(), Integer.valueOf(ipcPort)));
       }
     }
     return result;

@@ -1,11 +1,11 @@
-package org.apache.helix.actor.api;
+package org.apache.helix.ipc.api;
 
-import org.apache.helix.actor.resolver.HelixMessageScope;
+import org.apache.helix.ipc.resolver.HelixMessageScope;
 
 import java.util.UUID;
 
 /**
- * A message passing actor that lives on a Helix instance.
+ * Allows message passing among instances in Helix clusters.
  *
  * <p>
  *   Messages are sent asynchronously using {@link #send}, and handled by callbacks registered via {@link #register}
@@ -14,7 +14,7 @@ import java.util.UUID;
  * @param <T>
  *   The message type
  */
-public interface HelixActor<T> {
+public interface HelixIPC<T> {
     /**
      * Call this before sending any messages, and must be called before callbacks can fire
      */
@@ -37,5 +37,5 @@ public interface HelixActor<T> {
      *     Should be called before start.
      * </p>
      */
-    void register(HelixActorCallback<T> callback);
+    void register(HelixIPCCallback<T> callback);
 }

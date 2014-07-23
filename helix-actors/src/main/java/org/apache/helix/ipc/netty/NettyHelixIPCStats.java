@@ -1,4 +1,4 @@
-package org.apache.helix.actor.netty;
+package org.apache.helix.ipc.netty;
 
 import org.apache.commons.math.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.math.stat.descriptive.SynchronizedDescriptiveStatistics;
@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class NettyHelixActorStats implements NettyHelixActorStatsMBean {
+public class NettyHelixIPCStats implements NettyHelixIPCStatsMBean {
 
     // Aggregate stats are over the last 5 minutes
     private static final int COLLECTION_PERIOD_SECONDS = 5 * 60;
@@ -26,7 +26,7 @@ public class NettyHelixActorStats implements NettyHelixActorStatsMBean {
 
     private ScheduledFuture scheduledFuture;
 
-    public NettyHelixActorStats(ScheduledExecutorService scheduler) {
+    public NettyHelixIPCStats(ScheduledExecutorService scheduler) {
         this.scheduler = scheduler;
     }
 
