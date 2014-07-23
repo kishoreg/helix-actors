@@ -17,15 +17,11 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import org.apache.helix.HelixManager;
-import org.apache.helix.ipc.HelixIPCMessageCodecRegistry;
 import org.apache.helix.ipc.HelixIPCService;
 import org.apache.helix.ipc.HelixIPCCallback;
 import org.apache.helix.ipc.HelixIPCMessageCodec;
 import org.apache.helix.resolver.HelixMessageScope;
 import org.apache.helix.resolver.HelixResolver;
-import org.apache.helix.model.HelixConfigScope;
-import org.apache.helix.model.builder.HelixConfigScopeBuilder;
 import org.apache.log4j.Logger;
 
 import javax.management.ObjectName;
@@ -85,7 +81,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class NettyHelixIPCService implements HelixIPCService {
 
     private static final Logger LOG = Logger.getLogger(NettyHelixIPCService.class);
-    private static final String IPC_PORT = "IPC_PORT";
     private static final byte[] EMPTY_BYTES = new byte[0];
     private static final int MESSAGE_VERSION = 1;
 
@@ -99,9 +94,9 @@ public class NettyHelixIPCService implements HelixIPCService {
 
     private final AtomicBoolean isShutdown;
     private final ConcurrentMap<InetSocketAddress, Channel> channels;
-    private final HelixManager manager;
+    private final String instanceName;
     private final int port;
-    private final HelixIPCMessageCodecRegistry codecRegistry;
+    private final HelixIPCMessageCodec.Registry codecRegistry;
     private final HelixResolver resolver;
     private final ConcurrentMap<Integer, HelixIPCCallback> callbacks;
 
@@ -109,13 +104,13 @@ public class NettyHelixIPCService implements HelixIPCService {
     private Bootstrap clientBootstrap;
     private NettyHelixIPCStats stats;
 
-    public NettyHelixIPCService(HelixManager manager,
+    public NettyHelixIPCService(String instanceName,
                                 int port,
-                                HelixIPCMessageCodecRegistry codecRegistry,
+                                HelixIPCMessageCodec.Registry codecRegistry,
                                 HelixResolver resolver) {
         this.isShutdown = new AtomicBoolean(true);
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
-        this.manager = manager;
+        this.instanceName = instanceName;
         this.port = port;
         this.codecRegistry = codecRegistry;
         this.resolver = resolver;
@@ -134,13 +129,7 @@ public class NettyHelixIPCService implements HelixIPCService {
 
             ManagementFactory.getPlatformMBeanServer()
                     .registerMBean(stats, new ObjectName(
-                            "org.apache.helix:type=NettyHelixIPCStats,name=" + manager.getInstanceName()));
-
-            manager.getConfigAccessor().set(
-                    new HelixConfigScopeBuilder(HelixConfigScope.ConfigScopeProperty.PARTICIPANT)
-                            .forCluster(manager.getClusterName())
-                            .forParticipant(manager.getInstanceName())
-                            .build(), IPC_PORT, String.valueOf(port));
+                            "org.apache.helix:type=NettyHelixIPCStats,name=" + instanceName));
 
             new ServerBootstrap()
                     .group(eventLoopGroup)
@@ -197,7 +186,8 @@ public class NettyHelixIPCService implements HelixIPCService {
 
         // Encode message
         ByteBuf messageByteBuf = codec.encode(message);
-        byte[] clusterBytes = manager.getClusterName().getBytes();
+        byte[] clusterBytes = scope.getCluster() == null ?
+                EMPTY_BYTES : scope.getCluster().getBytes();
 
         // Send message(s)
         for (Map.Entry<String, InetSocketAddress> entry : addresses.entrySet()) {
@@ -364,11 +354,11 @@ public class NettyHelixIPCService implements HelixIPCService {
             String resourceName = toNonEmptyString(resourceBytes);
             String partitionName = toNonEmptyString(partitionBytes);
             String state = toNonEmptyString(stateBytes);
-            String instanceName = toNonEmptyString(instanceBytes);
+            String instanceNameFromMessage = toNonEmptyString(instanceBytes);
             Object message = codec.decode(messageBytes);
 
             // Handle callback (must be in this handler to preserve ordering)
-            if (instanceName != null && instanceName.equals(manager.getInstanceName())) {
+            if (instanceNameFromMessage != null && instanceNameFromMessage.equals(instanceName)) {
                 if (callbacks.get(messageType) == null) {
                     throw new IllegalStateException("No callback registered");
                 }
@@ -380,7 +370,7 @@ public class NettyHelixIPCService implements HelixIPCService {
                                 .state(state)
                                 .build(), messageId, message);
             } else {
-                LOG.warn("Received message addressed to " + instanceName + " which is not this instance");
+                LOG.warn("Received message addressed to " + instanceNameFromMessage + " which is not this instance");
             }
         }
 

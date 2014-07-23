@@ -2,6 +2,9 @@ package org.apache.helix.ipc;
 
 import io.netty.buffer.ByteBuf;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
 /**
  * Encodes and decodes messages of type T to and from {@link io.netty.buffer.ByteBuf}s
  */
@@ -45,4 +48,25 @@ public interface HelixIPCMessageCodec {
      * </p>
      */
     Object decode(ByteBuf message);
+
+    /**
+     * A thin wrapper around {@link java.util.concurrent.ConcurrentHashMap} that reserves
+     * some message types for internal use.
+     */
+    public static class Registry {
+        private final ConcurrentMap<Integer, HelixIPCMessageCodec> registry
+                = new ConcurrentHashMap<Integer, HelixIPCMessageCodec>();
+
+        public void put(int messageType, HelixIPCMessageCodec codec) {
+            if (messageType < HelixIPCConstants.FIRST_CUSTOM_MESSAGE_TYPE) {
+                throw new IllegalArgumentException("First allowed custom message type is "
+                        + HelixIPCConstants.FIRST_CUSTOM_MESSAGE_TYPE);
+            }
+            registry.put(messageType, codec);
+        }
+
+        public HelixIPCMessageCodec get(int messageType) {
+            return registry.get(messageType);
+        }
+    }
 }
