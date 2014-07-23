@@ -54,7 +54,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
      +----------------------+
      | len | state          |
      +----------------------+
-     | len | instance       |
+     | len | srcInstance    |
+     +----------------------+
+     | len | dstInstance    |
      +----------------------+
      | len | message        |
      +----------------------+
@@ -73,7 +75,7 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
     private static final int LENGTH_FIELD_LENGTH = 4;
     private static final int LENGTH_ADJUSTMENT = -4;
     private static final int INITIAL_BYTES_TO_STRIP = 0;
-    private static final int NUM_LENGTH_FIELDS = 7;
+    private static final int NUM_LENGTH_FIELDS = 8;
 
     private final AtomicBoolean isShutdown;
     private final ConcurrentMap<InetSocketAddress, Channel> channels;
@@ -182,7 +184,8 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                         ? EMPTY_BYTES : scope.getPartition().getBytes();
                 byte[] stateBytes = scope.getState() == null
                         ? EMPTY_BYTES : scope.getState().getBytes();
-                byte[] instanceBytes = entry.getKey().getBytes();
+                byte[] srcInstanceBytes = instanceName.getBytes();
+                byte[] dstInstanceBytes = entry.getKey().getBytes();
 
                 // Compute total length
                 int totalLength = NUM_LENGTH_FIELDS * (Integer.SIZE / 8)
@@ -192,7 +195,8 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                         + resourceBytes.length
                         + partitionBytes.length
                         + stateBytes.length
-                        + instanceBytes.length
+                        + srcInstanceBytes.length
+                        + dstInstanceBytes.length
                         + messageByteBuf.readableBytes();
 
                 // Build message header
@@ -210,8 +214,10 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                         .writeBytes(partitionBytes)
                         .writeInt(stateBytes.length)
                         .writeBytes(stateBytes)
-                        .writeInt(instanceBytes.length)
-                        .writeBytes(instanceBytes)
+                        .writeInt(srcInstanceBytes.length)
+                        .writeBytes(srcInstanceBytes)
+                        .writeInt(dstInstanceBytes.length)
+                        .writeBytes(dstInstanceBytes)
                         .writeInt(messageByteBuf.readableBytes());
 
                 // Compose message header and payload
@@ -291,14 +297,23 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
             byte[] stateBytes = new byte[stateSize];
             byteBuf.readBytes(stateBytes);
 
-            // Instance
-            int instanceSize = byteBuf.readInt();
-            if (instanceSize > messageLength) {
+            // Source instance
+            int srcInstanceSize = byteBuf.readInt();
+            if (srcInstanceSize > messageLength) {
                 throw new IllegalArgumentException(
-                        "instanceSize=" + instanceSize + " is greater than messageLength=" + messageLength);
+                        "instanceSize=" + srcInstanceSize + " is greater than messageLength=" + messageLength);
             }
-            byte[] instanceBytes = new byte[instanceSize];
-            byteBuf.readBytes(instanceBytes);
+            byte[] srcInstanceBytes = new byte[srcInstanceSize];
+            byteBuf.readBytes(srcInstanceBytes);
+
+            // Destination instance
+            int dstInstanceSize = byteBuf.readInt();
+            if (dstInstanceSize > messageLength) {
+                throw new IllegalArgumentException(
+                        "instanceSize=" + dstInstanceSize + " is greater than messageLength=" + messageLength);
+            }
+            byte[] dstInstanceBytes = new byte[dstInstanceSize];
+            byteBuf.readBytes(dstInstanceBytes);
 
             // Message
             int messageBytesSize = byteBuf.readInt();
@@ -313,23 +328,27 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
             String resourceName = toNonEmptyString(resourceBytes);
             String partitionName = toNonEmptyString(partitionBytes);
             String state = toNonEmptyString(stateBytes);
-            String instanceNameFromMessage = toNonEmptyString(instanceBytes);
+            String srcInstance = toNonEmptyString(srcInstanceBytes);
+            String dstInstance = toNonEmptyString(dstInstanceBytes);
             Object message = codec.decode(messageBytes);
 
             // Handle callback (must be in this handler to preserve ordering)
-            if (instanceNameFromMessage != null && instanceNameFromMessage.equals(instanceName)) {
+            if (dstInstance != null && dstInstance.equals(instanceName)) {
                 if (callbacks.get(messageType) == null) {
                     throw new IllegalStateException("No callback registered");
                 }
                 callbacks.get(messageType).onMessage(
+                        srcInstance,
                         new HelixMessageScope.Builder()
                                 .cluster(clusterName)
                                 .resource(resourceName)
                                 .partition(partitionName)
                                 .state(state)
-                                .build(), messageId, message);
+                                .build(),
+                        messageId,
+                        message);
             } else {
-                LOG.warn("Received message addressed to " + instanceNameFromMessage + " which is not this instance");
+                LOG.warn("Received message addressed to " + dstInstance + " which is not this instance");
             }
         }
 
