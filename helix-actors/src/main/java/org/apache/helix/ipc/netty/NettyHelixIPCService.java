@@ -82,7 +82,7 @@ import java.util.concurrent.atomic.AtomicReference;
  </pre>
  * </p>
  */
-public class NettyHelixIPCService<T> implements HelixIPCService<T> {
+public class NettyHelixIPCService implements HelixIPCService {
 
     private static final Logger LOG = Logger.getLogger(NettyHelixIPCService.class);
     private static final String IPC_PORT = "IPC_PORT";
@@ -102,30 +102,25 @@ public class NettyHelixIPCService<T> implements HelixIPCService<T> {
     private final ConcurrentMap<InetSocketAddress, Channel> channels;
     private final HelixManager manager;
     private final int port;
-    private final HelixIPCMessageCodec<T> codec;
+    private final HelixIPCMessageCodec codec;
     private final HelixResolver resolver;
-    private final AtomicReference<HelixIPCCallback<T>> callback;
+    private final AtomicReference<HelixIPCCallback> callback;
 
     private EventLoopGroup eventLoopGroup;
     private Bootstrap clientBootstrap;
     private NettyHelixIPCStats stats;
 
-    /**
-     * @param manager
-     *  The Helix manager being used by the participant
-     * @param port
-     *  The port on which to listen for messages
-     * @param codec
-     *  Codec for decoding / encoding actual message
-     */
-    public NettyHelixIPCService(HelixManager manager, int port, HelixIPCMessageCodec<T> codec, HelixResolver resolver) {
+    public NettyHelixIPCService(HelixManager manager,
+                                int port,
+                                HelixIPCMessageCodec codec,
+                                HelixResolver resolver) {
         this.isShutdown = new AtomicBoolean(true);
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
         this.manager = manager;
         this.port = port;
         this.codec = codec;
         this.resolver = resolver;
-        this.callback = new AtomicReference<HelixIPCCallback<T>>();
+        this.callback = new AtomicReference<HelixIPCCallback>();
     }
 
     /**
@@ -191,12 +186,12 @@ public class NettyHelixIPCService<T> implements HelixIPCService<T> {
      * Sends a message to all partitions with a given state in the cluster.
      */
     @Override
-    public int send(HelixMessageScope scope, UUID messageId, T message) {
+    public int send(HelixMessageScope scope, int messageType, UUID messageId, Object message) {
         // Resolve addresses
         Map<String, InetSocketAddress> addresses = resolver.resolve(scope);
 
         // Encode message
-        ByteBuf messageByteBuf = codec.encode(message);
+        ByteBuf messageByteBuf = codec.encode(messageType, message);
         byte[] clusterBytes = manager.getClusterName().getBytes();
 
         // Send message(s)
@@ -275,7 +270,7 @@ public class NettyHelixIPCService<T> implements HelixIPCService<T> {
      * Register a callback which is called when this node receives a message.
      */
     @Override
-    public void register(HelixIPCCallback<T> callback) {
+    public void register(HelixIPCCallback callback) {
         if (!isShutdown.get()) {
             throw new IllegalStateException("Cannot register callback after started");
         }
@@ -361,7 +356,7 @@ public class NettyHelixIPCService<T> implements HelixIPCService<T> {
             String partitionName = toNonEmptyString(partitionBytes);
             String state = toNonEmptyString(stateBytes);
             String instanceName = toNonEmptyString(instanceBytes);
-            T message = codec.decode(messageBytes);
+            Object message = codec.decode(messageType, messageBytes);
 
             // Handle callback (must be in this handler to preserve ordering)
             if (instanceName != null && instanceName.equals(manager.getInstanceName())) {
@@ -374,7 +369,7 @@ public class NettyHelixIPCService<T> implements HelixIPCService<T> {
                                 .resource(resourceName)
                                 .partition(partitionName)
                                 .state(state)
-                                .build(), messageId, message);
+                                .build(), messageType, messageId, message);
             } else {
                 LOG.warn("Received message addressed to " + instanceName + " which is not this instance");
             }

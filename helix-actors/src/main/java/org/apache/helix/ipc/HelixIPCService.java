@@ -10,11 +10,8 @@ import java.util.UUID;
  * <p>
  *   Messages are sent asynchronously using {@link #send}, and handled by callbacks registered via {@link #register}
  * </p>
- *
- * @param <T>
- *   The message type
  */
-public interface HelixIPCService<T> {
+public interface HelixIPCService {
     /**
      * Call this before sending any messages, and must be called before callbacks can fire
      */
@@ -28,7 +25,7 @@ public interface HelixIPCService<T> {
     /**
      * Sends a message to one or more nodes, and return the number of messages sent
      */
-    int send(HelixMessageScope scope, UUID messageId, T message);
+    int send(HelixMessageScope scope, int messageType, UUID messageId, Object message);
 
     /**
      * Register a callback.
@@ -37,5 +34,5 @@ public interface HelixIPCService<T> {
      *     Should be called before start.
      * </p>
      */
-    void register(HelixIPCCallback<T> callback);
+    void register(HelixIPCCallback callback);
 }

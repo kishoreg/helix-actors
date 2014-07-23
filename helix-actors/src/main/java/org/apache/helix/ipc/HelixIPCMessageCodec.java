@@ -5,7 +5,7 @@ import io.netty.buffer.ByteBuf;
 /**
  * Encodes and decodes messages of type T to and from {@link io.netty.buffer.ByteBuf}s
  */
-public interface HelixIPCMessageCodec<T> {
+public interface HelixIPCMessageCodec {
     /**
      * Encodes a typed message into a {@link io.netty.buffer.ByteBuf}.
      *
@@ -24,7 +24,7 @@ public interface HelixIPCMessageCodec<T> {
      * @see io.netty.buffer.ByteBuf#slice()
      * @see io.netty.buffer.CompositeByteBuf
      */
-    ByteBuf encode(T message);
+    ByteBuf encode(int messageType, Object message);
 
     /**
      * Decodes a typed message from a {@link io.netty.buffer.ByteBuf}.
@@ -44,5 +44,5 @@ public interface HelixIPCMessageCodec<T> {
      *     </pre>
      * </p>
      */
-    T decode(ByteBuf message);
+    Object decode(int messageType, ByteBuf message);
 }
