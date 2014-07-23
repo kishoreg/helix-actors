@@ -79,7 +79,6 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
 
     private final AtomicBoolean isShutdown;
     private final ConcurrentMap<InetSocketAddress, Channel> channels;
-    private final ConcurrentMap<Integer, HelixIPCCallback> callbacks;
 
     private EventLoopGroup eventLoopGroup;
     private Bootstrap clientBootstrap;
@@ -92,7 +91,6 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
         super(instanceName, port, codecRegistry, resolver);
         this.isShutdown = new AtomicBoolean(true);
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
-        this.callbacks = new ConcurrentHashMap<Integer, HelixIPCCallback>();
     }
 
     /**
@@ -237,17 +235,6 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
         }
 
         return addresses.size();
-    }
-
-    /**
-     * Register a callback which is called when this node receives a message.
-     */
-    @Override
-    public void register(int messageType, HelixIPCCallback callback) {
-        if (!isShutdown.get()) {
-            throw new IllegalStateException("Cannot register callback after started");
-        }
-        this.callbacks.put(messageType, callback);
     }
 
     // TODO: Avoid creating byte[] and HelixActorScope repeatedly

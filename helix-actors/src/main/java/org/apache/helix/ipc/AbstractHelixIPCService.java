@@ -4,6 +4,8 @@ import org.apache.helix.resolver.HelixMessageScope;
 import org.apache.helix.resolver.HelixResolver;
 
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Allows message passing among instances in Helix clusters.
@@ -18,6 +20,7 @@ public abstract class AbstractHelixIPCService {
     protected final int port;
     protected final HelixIPCMessageCodec.Registry codecRegistry;
     protected final HelixResolver resolver;
+    protected final ConcurrentMap<Integer, HelixIPCCallback> callbacks;
 
     /**
      * @param instanceName
@@ -37,6 +40,7 @@ public abstract class AbstractHelixIPCService {
         this.port = port;
         this.codecRegistry = codecRegistry;
         this.resolver = resolver;
+        this.callbacks = new ConcurrentHashMap<Integer, HelixIPCCallback>();
     }
 
     /**
@@ -55,11 +59,9 @@ public abstract class AbstractHelixIPCService {
     public abstract int send(HelixMessageScope scope, int messageType, UUID messageId, Object message);
 
     /**
-     * Register a callback.
-     *
-     * <p>
-     *     Should be called before start.
-     * </p>
+     * Register a callback for a given message type.
      */
-    public abstract void register(int messageType, HelixIPCCallback callback);
+    public void register(int messageType, HelixIPCCallback callback) {
+        this.callbacks.put(messageType, callback);
+    }
 }
