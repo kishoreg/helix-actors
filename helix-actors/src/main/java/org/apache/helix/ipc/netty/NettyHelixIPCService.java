@@ -137,7 +137,7 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                                     LENGTH_FIELD_LENGTH,
                                     LENGTH_ADJUSTMENT,
                                     INITIAL_BYTES_TO_STRIP));
-                            socketChannel.pipeline().addLast(new HelixActorIPCCallbackHandler());
+                            socketChannel.pipeline().addLast(new HelixIPCCallbackHandler());
                         }
                     })
                     .bind(new InetSocketAddress(port));
@@ -317,7 +317,7 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
     // as well as the HelixActorScope object that holds references to them. Should
     // use array-backed ByteBufs. Or it may not be possible. But investigate.
     @ChannelHandler.Sharable
-    private class HelixActorIPCCallbackHandler extends SimpleChannelInboundHandler<ByteBuf> {
+    private class HelixIPCCallbackHandler extends SimpleChannelInboundHandler<ByteBuf> {
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, ByteBuf byteBuf) throws Exception {
             // Message length
