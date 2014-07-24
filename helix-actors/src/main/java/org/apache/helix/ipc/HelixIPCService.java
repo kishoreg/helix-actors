@@ -49,6 +49,9 @@ public interface HelixIPCService {
     /** Registers a callback for a given message type */
     void registerCallback(int messageType, HelixIPCCallback callback);
 
+    /** Registers a callback for ACK messages (acknowledge receipt of original message ID) */
+    void registerAckCallback(HelixIPCCallback callback);
+
     /** Registers a codec for a given message type */
     void registerMessageCodec(int messageType, HelixIPCMessageCodec messageCodec);
 }

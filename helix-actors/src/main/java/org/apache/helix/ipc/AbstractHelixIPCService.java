@@ -37,7 +37,16 @@ public abstract class AbstractHelixIPCService implements HelixIPCService {
 
     @Override
     public void registerCallback(int messageType, HelixIPCCallback callback) {
+        if (messageType < HelixIPCConstants.FIRST_CUSTOM_MESSAGE_TYPE) {
+            throw new IllegalArgumentException("First allowed custom message type is "
+                    + HelixIPCConstants.FIRST_CUSTOM_MESSAGE_TYPE);
+        }
         this.callbacks.put(messageType, callback);
+    }
+
+    @Override
+    public void registerAckCallback(HelixIPCCallback callback) {
+        this.callbacks.put(HelixIPCConstants.MESSAGE_TYPE_ACK, callback);
     }
 
     @Override
