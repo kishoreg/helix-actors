@@ -163,10 +163,10 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                 EMPTY_BYTES : scope.getCluster().getBytes();
 
         // Send message(s)
-        if (scope.getAddresses() == null) {
+        if (scope.getDestinationAddresses() == null) {
             throw new IllegalArgumentException("Cannot send message to unresolved scope");
         }
-        for (Map.Entry<String, InetSocketAddress> entry : scope.getAddresses().entrySet()) {
+        for (Map.Entry<String, InetSocketAddress> entry : scope.getDestinationAddresses().entrySet()) {
             try {
                 // Get a channel (lazily connect)
                 Channel channel = null;

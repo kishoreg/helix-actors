@@ -19,9 +19,6 @@ package org.apache.helix.resolver;
  * under the License.
  */
 
-import java.net.InetSocketAddress;
-import java.util.Map;
-
 /**
  * An interface that resolves a message scope to a direct address.
  */
@@ -46,7 +43,7 @@ public interface HelixResolver {
    * Resolve a scope.
    *
    * <p>
-   *     After this is called, {@link HelixMessageScope#getAddresses()} for the provided scope
+   *     After this is called, {@link HelixMessageScope#getDestinationAddresses()} for the provided scope
    *     will return a non-null value.
    * </p>
    */

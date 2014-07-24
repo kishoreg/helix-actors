@@ -92,7 +92,7 @@ public class HelixMessageScope {
     _destinationAddresses = destinationAddresses;
   }
 
-  public Map<String, InetSocketAddress> getAddresses() {
+  public Map<String, InetSocketAddress> getDestinationAddresses() {
     return _destinationAddresses;
   }
 
