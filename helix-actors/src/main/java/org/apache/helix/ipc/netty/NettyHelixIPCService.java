@@ -204,23 +204,23 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                 // Build message header
                 ByteBuf headerBuf = PooledByteBufAllocator.DEFAULT.buffer();
                 headerBuf.writeInt(totalLength)
-                        .writeInt(MESSAGE_VERSION)
-                        .writeInt(messageType)
-                        .writeLong(messageId.getMostSignificantBits())
-                        .writeLong(messageId.getLeastSignificantBits())
-                        .writeInt(clusterBytes.length)
-                        .writeBytes(clusterBytes)
-                        .writeInt(resourceBytes.length)
-                        .writeBytes(resourceBytes)
-                        .writeInt(partitionBytes.length)
-                        .writeBytes(partitionBytes)
-                        .writeInt(stateBytes.length)
-                        .writeBytes(stateBytes)
-                        .writeInt(srcInstanceBytes.length)
-                        .writeBytes(srcInstanceBytes)
-                        .writeInt(dstInstanceBytes.length)
-                        .writeBytes(dstInstanceBytes)
-                        .writeInt(messageByteBuf.readableBytes());
+                         .writeInt(MESSAGE_VERSION)
+                         .writeInt(messageType)
+                         .writeLong(messageId.getMostSignificantBits())
+                         .writeLong(messageId.getLeastSignificantBits())
+                         .writeInt(clusterBytes.length)
+                         .writeBytes(clusterBytes)
+                         .writeInt(resourceBytes.length)
+                         .writeBytes(resourceBytes)
+                         .writeInt(partitionBytes.length)
+                         .writeBytes(partitionBytes)
+                         .writeInt(stateBytes.length)
+                         .writeBytes(stateBytes)
+                         .writeInt(srcInstanceBytes.length)
+                         .writeBytes(srcInstanceBytes)
+                         .writeInt(dstInstanceBytes.length)
+                         .writeBytes(dstInstanceBytes)
+                         .writeInt(messageByteBuf.readableBytes());
 
                 // Compose message header and payload
                 CompositeByteBuf fullByteBuf = new CompositeByteBuf(PooledByteBufAllocator.DEFAULT, false, 2);

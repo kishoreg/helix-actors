@@ -2,17 +2,15 @@ package org.apache.helix.ipc;
 
 import org.apache.helix.resolver.HelixMessageScope;
 
-import java.net.InetSocketAddress;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * Allows message passing among instances in Helix clusters.
+ * Base class implementation of {@link org.apache.helix.ipc.HelixIPCService}
  *
  * <p>
- *   Messages are sent asynchronously using {@link #send}, and handled by callbacks registered via {@link #registerCallback}
+ *     Ensures that service is composed with all the necessary components.
  * </p>
  */
 public abstract class AbstractHelixIPCService implements HelixIPCService {
@@ -42,10 +40,7 @@ public abstract class AbstractHelixIPCService implements HelixIPCService {
     public abstract void shutdown() throws Exception;
 
     @Override
-    public abstract void send(HelixMessageScope scope,
-                              int messageType,
-                              UUID messageId,
-                              Object message);
+    public abstract void send(HelixMessageScope scope, int messageType, UUID messageId, Object message);
 
     @Override
     public void registerCallback(int messageType, HelixIPCCallback callback) {
