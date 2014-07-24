@@ -20,6 +20,7 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.helix.ipc.AbstractHelixIPCService;
 import org.apache.helix.ipc.HelixIPCConstants;
 import org.apache.helix.ipc.HelixIPCMessageCodec;
+import org.apache.helix.ipc.HelixIPCService;
 import org.apache.helix.resolver.HelixMessageScope;
 import org.apache.log4j.Logger;
 
@@ -446,5 +447,10 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
         protected void channelRead0(ChannelHandlerContext channelHandlerContext, SocketChannel socketChannel) throws Exception {
             // NOP
         }
+    }
+
+    public static void main(String[] args) throws Exception {
+        HelixIPCService ipcService = new NettyHelixIPCService(args[0], Integer.parseInt(args[1]));
+        ipcService.start();
     }
 }
