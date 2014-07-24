@@ -338,64 +338,43 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
 
             // Cluster
             int clusterSize = byteBuf.readInt();
-            if (clusterSize > messageLength) {
-                throw new IllegalArgumentException(
-                        "nameSize=" + clusterSize + " is greater than messageLength=" + messageLength);
-            }
+            checkLength("clusterSize", clusterSize, messageLength);
             byte[] clusterBytes = new byte[clusterSize];
             byteBuf.readBytes(clusterBytes);
 
             // Resource
             int resourceSize = byteBuf.readInt();
-            if (resourceSize > messageLength) {
-                throw new IllegalArgumentException(
-                        "nameSize=" + resourceSize + " is greater than messageLength=" + messageLength);
-            }
+            checkLength("resourceSize", resourceSize, messageLength);
             byte[] resourceBytes = new byte[resourceSize];
             byteBuf.readBytes(resourceBytes);
 
             // Partition
             int partitionSize = byteBuf.readInt();
-            if (partitionSize > messageLength) {
-                throw new IllegalArgumentException(
-                        "nameSize=" + partitionSize + " is greater than messageLength=" + messageLength);
-            }
+            checkLength("partitionSize", partitionSize, messageLength);
             byte[] partitionBytes = new byte[partitionSize];
             byteBuf.readBytes(partitionBytes);
 
             // State
             int stateSize = byteBuf.readInt();
-            if (stateSize > messageLength) {
-                throw new IllegalArgumentException(
-                        "stateSize=" + stateSize + " is greater than messageLength=" + messageLength);
-            }
+            checkLength("stateSize", stateSize, messageLength);
             byte[] stateBytes = new byte[stateSize];
             byteBuf.readBytes(stateBytes);
 
             // Source instance
             int srcInstanceSize = byteBuf.readInt();
-            if (srcInstanceSize > messageLength) {
-                throw new IllegalArgumentException(
-                        "instanceSize=" + srcInstanceSize + " is greater than messageLength=" + messageLength);
-            }
+            checkLength("srcInstanceSize", srcInstanceSize, messageLength);
             byte[] srcInstanceBytes = new byte[srcInstanceSize];
             byteBuf.readBytes(srcInstanceBytes);
 
             // Destination instance
             int dstInstanceSize = byteBuf.readInt();
-            if (dstInstanceSize > messageLength) {
-                throw new IllegalArgumentException(
-                        "instanceSize=" + dstInstanceSize + " is greater than messageLength=" + messageLength);
-            }
+            checkLength("dstInstanceSize", dstInstanceSize, messageLength);
             byte[] dstInstanceBytes = new byte[dstInstanceSize];
             byteBuf.readBytes(dstInstanceBytes);
 
             // Message
             int messageBytesSize = byteBuf.readInt();
-            if (messageBytesSize > messageLength) {
-                throw new IllegalArgumentException(
-                        "messageBytesSize=" + messageBytesSize + " is greater than messageLength=" + messageLength);
-            }
+            checkLength("messageBytesSize", messageBytesSize, messageLength);
             ByteBuf messageBytes = byteBuf.slice(byteBuf.readerIndex(), messageBytesSize);
 
             // Parse
@@ -441,6 +420,16 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
     // Returns null if bytes.length == 0, or a String from those bytes
     private static String toNonEmptyString(byte[] bytes) {
         return bytes.length > 0 ? new String(bytes) : null;
+    }
+
+    /** @throws java.lang.IllegalArgumentException if length > messageLength (attempt to prevent OOM exceptions) */
+    private static void checkLength(String fieldName,
+                                    int length,
+                                    int messageLength) throws IllegalArgumentException {
+        if (length > messageLength) {
+            throw new IllegalArgumentException(
+                    fieldName + "=" + length + " is greater than messageLength=" + messageLength);
+        }
     }
 
     private static class NopInitializer extends ChannelInitializer<SocketChannel> {
