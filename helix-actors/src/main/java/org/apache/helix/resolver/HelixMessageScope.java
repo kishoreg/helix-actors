@@ -36,8 +36,8 @@ public class HelixMessageScope {
   private final String _state;
   private final String _srcInstance;
 
-  private Map<String, InetSocketAddress> _addresses;
-  private InetSocketAddress _srcAddress;
+  private Map<String, InetSocketAddress> _destinationAddresses;
+  private InetSocketAddress _sourceAddress;
 
   private HelixMessageScope(String cluster, String resource, String partition, String state, String srcInstance) {
     _cluster = cluster;
@@ -88,20 +88,20 @@ public class HelixMessageScope {
     return _srcInstance;
   }
 
-  public void setAddresses(Map<String, InetSocketAddress> addresses) {
-    _addresses = addresses;
+  public void setDestinationAddresses(Map<String, InetSocketAddress> destinationAddresses) {
+    _destinationAddresses = destinationAddresses;
   }
 
   public Map<String, InetSocketAddress> getAddresses() {
-    return _addresses;
+    return _destinationAddresses;
   }
 
-  public void setSrcAddress(InetSocketAddress srcAddress) {
-    _srcAddress = srcAddress;
+  public void setSourceAddress(InetSocketAddress sourceAddress) {
+    _sourceAddress = sourceAddress;
   }
 
-  public InetSocketAddress getSrcAddress() {
-    return _srcAddress;
+  public InetSocketAddress getSourceAddress() {
+    return _sourceAddress;
   }
 
   public boolean isValid() {
@@ -116,7 +116,7 @@ public class HelixMessageScope {
     private String _resource;
     private String _partition;
     private String _state;
-    private String _srcInstance;
+    private String _sourceInstance;
 
     /**
      * Associate the scope with a cluster
@@ -158,8 +158,8 @@ public class HelixMessageScope {
       return this;
     }
 
-    public Builder srcInstance(String srcInstance) {
-      _srcInstance = srcInstance;
+    public Builder sourceInstance(String sourceInstance) {
+      _sourceInstance = sourceInstance;
       return this;
     }
 
@@ -168,7 +168,7 @@ public class HelixMessageScope {
      * @return HelixMessageScope instance corresponding to the built scope
      */
     public HelixMessageScope build() {
-      return new HelixMessageScope(_cluster, _resource, _partition, _state, _srcInstance);
+      return new HelixMessageScope(_cluster, _resource, _partition, _state, _sourceInstance);
     }
   }
 }

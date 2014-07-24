@@ -24,9 +24,7 @@ import com.google.common.collect.Sets;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
 import org.apache.helix.NotificationContext;
-import org.apache.helix.PropertyKey;
 import org.apache.helix.model.ExternalView;
-import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.InstanceConfig;
 import org.apache.log4j.Logger;
 
@@ -78,10 +76,10 @@ public abstract class AbstractHelixResolver implements HelixResolver {
   public void resolve(HelixMessageScope scope) {
     if (!scope.isValid()) {
       LOG.error("Scope " + scope + " is not valid!");
-      scope.setAddresses(new HashMap<String, InetSocketAddress>());
+      scope.setDestinationAddresses(new HashMap<String, InetSocketAddress>());
     } else if (!_isConnected) {
       LOG.error("Cannot resolve " + scope + " without first connecting!");
-      scope.setAddresses(new HashMap<String, InetSocketAddress>());
+      scope.setDestinationAddresses(new HashMap<String, InetSocketAddress>());
     }
 
     // Connect or refresh connection
@@ -156,11 +154,11 @@ public abstract class AbstractHelixResolver implements HelixResolver {
       if (ipcPort == null) {
         LOG.error("No ipc address registered for source instance " + scope.getSrcInstance());
       } else {
-        scope.setSrcAddress(new InetSocketAddress(config.getHostName(), Integer.valueOf(ipcPort)));
+        scope.setSourceAddress(new InetSocketAddress(config.getHostName(), Integer.valueOf(ipcPort)));
       }
     }
 
-    scope.setAddresses(result);
+    scope.setDestinationAddresses(result);
   }
 
   @Override

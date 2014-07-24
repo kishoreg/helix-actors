@@ -124,6 +124,16 @@ public class TestZKHelixResolver extends ZkUnitTestBase {
     }
     Assert.assertEquals(partition0Scope.getAddresses().values(), expectedSocketAddrs,
             "Expected " + expectedSocketAddrs + ", found " + partition0Scope.getAddresses().values());
+
+    HelixMessageScope sourceInstanceScope = new HelixMessageScope.Builder()
+            .cluster(CLUSTER_NAME)
+            .resource(RESOURCE_NAME)
+            .partition(RESOURCE_NAME + "_0")
+            .sourceInstance(_participants[0].getInstanceName())
+            .build();
+    _resolver.resolve(sourceInstanceScope);
+    Assert.assertNotNull(sourceInstanceScope.getSourceAddress());
+    Assert.assertEquals(sourceInstanceScope.getSourceAddress(), _socketMap.get(_participants[0].getInstanceName()));
   }
 
   @AfterClass
