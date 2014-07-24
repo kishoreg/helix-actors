@@ -1,5 +1,6 @@
 package org.apache.helix.ipc;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.helix.resolver.HelixMessageScope;
 
 import java.util.UUID;
@@ -31,6 +32,7 @@ public abstract class AbstractHelixIPCService implements HelixIPCService {
         this.port = port;
         this.callbacks = new ConcurrentHashMap<Integer, HelixIPCCallback>();
         this.messageCodecs = new ConcurrentHashMap<Integer, HelixIPCMessageCodec>();
+        this.messageCodecs.put(HelixIPCConstants.MESSAGE_TYPE_ACK, ACK_CODEC);
     }
 
     @Override
@@ -46,4 +48,17 @@ public abstract class AbstractHelixIPCService implements HelixIPCService {
         }
         this.messageCodecs.put(messageType, messageCodec);
     }
+
+    // Used for ACK messages which carry no payload (so just return null)
+    private static HelixIPCMessageCodec ACK_CODEC = new HelixIPCMessageCodec() {
+        @Override
+        public ByteBuf encode(Object message) {
+            return null;
+        }
+
+        @Override
+        public Object decode(ByteBuf message) {
+            return null;
+        }
+    };
 }
