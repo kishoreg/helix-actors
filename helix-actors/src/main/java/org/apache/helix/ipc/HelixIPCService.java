@@ -36,6 +36,16 @@ public interface HelixIPCService {
      */
     void send(HelixMessageScope scope, int messageType, UUID messageId, Object message);
 
+    /**
+     * Sends an acknowledgement to the original sender for a given message ID
+     *
+     * @param scope
+     *  A scope which has already been resolved using {@link org.apache.helix.resolver.HelixResolver#resolve}
+     * @param messageId
+     *  The ID of the original message to be acknowledged
+     */
+    void ack(HelixMessageScope scope, UUID messageId);
+
     /** Registers a callback for a given message type */
     void registerCallback(int messageType, HelixIPCCallback callback);
 

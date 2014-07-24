@@ -34,15 +34,6 @@ public abstract class AbstractHelixIPCService implements HelixIPCService {
     }
 
     @Override
-    public abstract void start() throws Exception;
-
-    @Override
-    public abstract void shutdown() throws Exception;
-
-    @Override
-    public abstract void send(HelixMessageScope scope, int messageType, UUID messageId, Object message);
-
-    @Override
     public void registerCallback(int messageType, HelixIPCCallback callback) {
         this.callbacks.put(messageType, callback);
     }

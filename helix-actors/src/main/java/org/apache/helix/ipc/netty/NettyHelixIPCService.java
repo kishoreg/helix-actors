@@ -18,6 +18,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import org.apache.helix.ipc.AbstractHelixIPCService;
+import org.apache.helix.ipc.HelixIPCConstants;
 import org.apache.helix.ipc.HelixIPCMessageCodec;
 import org.apache.helix.resolver.HelixMessageScope;
 import org.apache.log4j.Logger;
@@ -258,6 +259,56 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                 throw new IllegalStateException("Could not send message to " + scope, e);
             }
         }
+    }
+
+    @Override
+    public void ack(HelixMessageScope scope, UUID messageId) {
+        if (scope.getSourceAddress() == null) {
+            throw new IllegalArgumentException("Cannot ack message to unresolved scope");
+        }
+
+        // Compute message length
+        int totalLength = NUM_LENGTH_FIELDS * (Integer.SIZE / 8)
+                + (Integer.SIZE / 8) * 2 // version, type
+                + (Long.SIZE / 8) * 2; // 128 bit UUID
+
+        // Build message header
+        ByteBuf headerBuf = PooledByteBufAllocator.DEFAULT.buffer();
+        headerBuf.writeInt(totalLength)
+                .writeInt(MESSAGE_VERSION)
+                .writeInt(HelixIPCConstants.MESSAGE_TYPE_ACK)
+                .writeLong(messageId.getMostSignificantBits())
+                .writeLong(messageId.getLeastSignificantBits())
+                .writeInt(0)
+                .writeInt(0)
+                .writeInt(0)
+                .writeInt(0)
+                .writeInt(0)
+                .writeInt(0);
+
+        // Get a channel (lazily connect)
+        Channel channel = null;
+        try {
+            synchronized (channels) {
+                channel = channels.get(scope.getSourceAddress());
+                if (channel == null || !channel.isOpen()) {
+                    channel = clientBootstrap.connect(scope.getSourceAddress()).sync().channel();
+                    channels.put(scope.getSourceAddress(), channel);
+                    stats.countChannelOpen();
+                }
+            }
+        } catch (InterruptedException e) {
+            throw new IllegalStateException("Could not connect to " + scope.getSourceAddress());
+        }
+
+        // Send
+        if (shouldFlush) {
+            channel.writeAndFlush(headerBuf, channel.voidPromise());
+        } else {
+            channel.write(headerBuf, channel.voidPromise());
+        }
+        stats.countBytes(totalLength);
+        stats.countMessage();
     }
 
     // TODO: Avoid creating byte[] and HelixActorScope repeatedly
