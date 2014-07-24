@@ -79,15 +79,32 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
 
     private final AtomicBoolean isShutdown;
     private final ConcurrentMap<InetSocketAddress, Channel> channels;
+    private final boolean shouldFlush;
 
     private EventLoopGroup eventLoopGroup;
     private Bootstrap clientBootstrap;
     private NettyHelixIPCStats stats;
 
     public NettyHelixIPCService(String instanceName, int port) {
+        this(instanceName, port, true);
+    }
+
+    /**
+     * @param instanceName
+     *  The Helix instance name (used as source instance name)
+     * @param port
+     *  The port on which to listen for other IPC messages
+     * @param shouldFlush
+     *  If true, {@link Channel#writeAndFlush(Object)} is called when IPC messages are sent,
+     *  (that is, the message makes it out on the wire after {@link #send} returns). If false,
+     *  messages are buffered and flushed asynchronously. In high-throughput applications, one
+     *  should set shouldFlush to false to avoid the expensive system call involved.
+     */
+    public NettyHelixIPCService(String instanceName, int port, boolean shouldFlush) {
         super(instanceName, port);
         this.isShutdown = new AtomicBoolean(true);
         this.channels = new ConcurrentHashMap<InetSocketAddress, Channel>();
+        this.shouldFlush = shouldFlush;
     }
 
     /**
@@ -229,7 +246,11 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                 fullByteBuf.writerIndex(totalLength);
 
                 // Send
-                channel.writeAndFlush(fullByteBuf, channel.voidPromise()); // TODO: No flush to avoid syscall?
+                if (shouldFlush) {
+                    channel.writeAndFlush(fullByteBuf, channel.voidPromise());
+                } else {
+                    channel.write(fullByteBuf, channel.voidPromise());
+                }
                 stats.countBytes(totalLength);
                 stats.countMessage();
             } catch (Exception e) {
