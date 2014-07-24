@@ -355,24 +355,29 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
             String dstInstance = toNonEmptyString(dstInstanceBytes);
             Object message = codec.decode(messageBytes);
 
-            // Handle callback (must be in this handler to preserve ordering)
-            if (dstInstance != null && dstInstance.equals(instanceName)) {
-                if (callbacks.get(messageType) == null) {
-                    throw new IllegalStateException("No callback registered");
-                }
-                callbacks.get(messageType).onMessage(
-                        new HelixMessageScope.Builder()
-                                .cluster(clusterName)
-                                .resource(resourceName)
-                                .partition(partitionName)
-                                .state(state)
-                                .sourceInstance(srcInstance)
-                                .build(),
-                        messageId,
-                        message);
-            } else {
-                LOG.warn("Received message addressed to " + dstInstance + " which is not this instance");
+            // Error check
+            if (dstInstance == null) {
+                throw new IllegalStateException(
+                    "Received message addressed to null destination from " + srcInstance);
+            } else if (!dstInstance.equals(instanceName)) {
+                throw new IllegalStateException(
+                    "Received message addressed to " + dstInstance + " from " + srcInstance);
+            } else if (callbacks.get(messageType) == null) {
+                throw new IllegalStateException(
+                    "No callback registered for message type " + messageType);
             }
+
+            // Handle callback (must be done in this handler to preserve message ordering)
+            callbacks.get(messageType).onMessage(
+                    new HelixMessageScope.Builder()
+                            .cluster(clusterName)
+                            .resource(resourceName)
+                            .partition(partitionName)
+                            .state(state)
+                            .sourceInstance(srcInstance)
+                            .build(),
+                    messageId,
+                    message);
         }
 
         @Override
