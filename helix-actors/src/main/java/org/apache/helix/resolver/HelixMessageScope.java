@@ -34,14 +34,17 @@ public class HelixMessageScope {
   private final String _resource;
   private final String _partition;
   private final String _state;
+  private final String _srcInstance;
 
   private Map<String, InetSocketAddress> _addresses;
+  private InetSocketAddress _srcAddress;
 
-  private HelixMessageScope(String cluster, String resource, String partition, String state) {
+  private HelixMessageScope(String cluster, String resource, String partition, String state, String srcInstance) {
     _cluster = cluster;
     _resource = resource;
     _partition = partition;
     _state = state;
+    _srcInstance = srcInstance;
   }
 
   @Override
@@ -81,12 +84,24 @@ public class HelixMessageScope {
     return _state;
   }
 
+  public String getSrcInstance() {
+    return _srcInstance;
+  }
+
   public void setAddresses(Map<String, InetSocketAddress> addresses) {
     _addresses = addresses;
   }
 
   public Map<String, InetSocketAddress> getAddresses() {
     return _addresses;
+  }
+
+  public void setSrcAddress(InetSocketAddress srcAddress) {
+    _srcAddress = srcAddress;
+  }
+
+  public InetSocketAddress getSrcAddress() {
+    return _srcAddress;
   }
 
   public boolean isValid() {
@@ -101,6 +116,7 @@ public class HelixMessageScope {
     private String _resource;
     private String _partition;
     private String _state;
+    private String _srcInstance;
 
     /**
      * Associate the scope with a cluster
@@ -142,12 +158,17 @@ public class HelixMessageScope {
       return this;
     }
 
+    public Builder srcInstance(String srcInstance) {
+      _srcInstance = srcInstance;
+      return this;
+    }
+
     /**
      * Create the scope
      * @return HelixMessageScope instance corresponding to the built scope
      */
     public HelixMessageScope build() {
-      return new HelixMessageScope(_cluster, _resource, _partition, _state);
+      return new HelixMessageScope(_cluster, _resource, _partition, _state, _srcInstance);
     }
   }
 }

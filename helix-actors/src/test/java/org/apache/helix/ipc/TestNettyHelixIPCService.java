@@ -124,7 +124,7 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
         NettyHelixIPCService firstIPC = new NettyHelixIPCService(firstNode.getInstanceName(), firstPort);
         firstIPC.registerCallback(messageType, new HelixIPCCallback() {
             @Override
-            public void onMessage(HelixMessageScope scope, String srcInstance, UUID messageId, Object message) {
+            public void onMessage(HelixMessageScope scope, UUID messageId, Object message) {
                 String key = scope.getPartition() + ":" + scope.getState();
                 firstCounts.putIfAbsent(key, new AtomicInteger());
                 firstCounts.get(key).incrementAndGet();
@@ -138,7 +138,7 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
         NettyHelixIPCService secondIPC = new NettyHelixIPCService(secondNode.getInstanceName(), secondPort);
         secondIPC.registerCallback(messageType, new HelixIPCCallback() {
             @Override
-            public void onMessage(HelixMessageScope scope, String srcInstance, UUID messageId, Object message) {
+            public void onMessage(HelixMessageScope scope, UUID messageId, Object message) {
                 String key = scope.getPartition() + ":" + scope.getState();
                 secondCounts.putIfAbsent(key, new AtomicInteger());
                 secondCounts.get(key).incrementAndGet();

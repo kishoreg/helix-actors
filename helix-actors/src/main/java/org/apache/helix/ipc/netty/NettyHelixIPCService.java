@@ -345,8 +345,8 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                                 .resource(resourceName)
                                 .partition(partitionName)
                                 .state(state)
+                                .srcInstance(srcInstance)
                                 .build(),
-                        srcInstance,
                         messageId,
                         message);
             } else {

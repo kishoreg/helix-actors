@@ -24,7 +24,9 @@ import com.google.common.collect.Sets;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
 import org.apache.helix.NotificationContext;
+import org.apache.helix.PropertyKey;
 import org.apache.helix.model.ExternalView;
+import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.InstanceConfig;
 import org.apache.log4j.Logger;
 
@@ -146,6 +148,18 @@ public abstract class AbstractHelixResolver implements HelixResolver {
         result.put(participant.getInstanceName(), new InetSocketAddress(participant.getHostName(), Integer.valueOf(ipcPort)));
       }
     }
+
+    // Get source instance
+    if (scope.getSrcInstance() != null) {
+      InstanceConfig config = routingTable.getInstanceConfig(scope.getSrcInstance());
+      String ipcPort = config.getRecord().getSimpleField(IPC_PORT);
+      if (ipcPort == null) {
+        LOG.error("No ipc address registered for source instance " + scope.getSrcInstance());
+      } else {
+        scope.setSrcAddress(new InetSocketAddress(config.getHostName(), Integer.valueOf(ipcPort)));
+      }
+    }
+
     scope.setAddresses(result);
   }
 
@@ -220,6 +234,10 @@ public abstract class AbstractHelixResolver implements HelixResolver {
     public ResolverRoutingTable getRoutingTable() {
       renew();
       return _routingTable;
+    }
+
+    public HelixManager getManager() {
+      return _manager;
     }
 
     private synchronized void renew() {
