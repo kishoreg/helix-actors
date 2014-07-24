@@ -1,10 +1,12 @@
 package org.apache.helix.ipc.netty;
 
 public interface NettyHelixIPCStatsMBean {
-    long getMessageCount();
+    long getSendCount();
+    long getAckCount();
     long getBytesCount();
     long getErrorCount();
     long getChannelOpenCount();
-    double getMessagesPerSecond();
+    double getSendsPerSecond();
+    double getAcksPerSecond();
     double getBytesPerSecond();
 }

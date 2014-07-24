@@ -253,7 +253,7 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                     channel.write(fullByteBuf, channel.voidPromise());
                 }
                 stats.countBytes(totalLength);
-                stats.countMessage();
+                stats.countSend();
             } catch (Exception e) {
                 stats.countError();
                 throw new IllegalStateException("Could not send message to " + scope, e);
@@ -286,9 +286,9 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                 .writeInt(0)
                 .writeInt(0);
 
-        // Get a channel (lazily connect)
         Channel channel = null;
         try {
+            // Get a channel (lazily connect)
             synchronized (channels) {
                 channel = channels.get(scope.getSourceAddress());
                 if (channel == null || !channel.isOpen()) {
@@ -297,18 +297,19 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                     stats.countChannelOpen();
                 }
             }
+
+            // Send
+            if (shouldFlush) {
+                channel.writeAndFlush(headerBuf, channel.voidPromise());
+            } else {
+                channel.write(headerBuf, channel.voidPromise());
+            }
+            stats.countBytes(totalLength);
+            stats.countAck();
         } catch (InterruptedException e) {
-            throw new IllegalStateException("Could not connect to " + scope.getSourceAddress());
+            throw new IllegalStateException("Could not send ack to " + scope.getSourceAddress(), e);
         }
 
-        // Send
-        if (shouldFlush) {
-            channel.writeAndFlush(headerBuf, channel.voidPromise());
-        } else {
-            channel.write(headerBuf, channel.voidPromise());
-        }
-        stats.countBytes(totalLength);
-        stats.countMessage();
     }
 
     // TODO: Avoid creating byte[] and HelixActorScope repeatedly

@@ -14,11 +14,13 @@ public class NettyHelixIPCStats implements NettyHelixIPCStatsMBean {
     // Aggregate stats are over the last 5 minutes
     private static final int COLLECTION_PERIOD_SECONDS = 5 * 60;
 
-    private final AtomicLong messageCount = new AtomicLong();
+    private final AtomicLong sendCount = new AtomicLong();
+    private final AtomicLong ackCount = new AtomicLong();
     private final AtomicLong bytesCount = new AtomicLong();
     private final AtomicLong errorCount = new AtomicLong();
     private final AtomicLong channelOpenCount = new AtomicLong();
-    private final DescriptiveStatistics messageStats = new SynchronizedDescriptiveStatistics(COLLECTION_PERIOD_SECONDS);
+    private final DescriptiveStatistics sendStats = new SynchronizedDescriptiveStatistics(COLLECTION_PERIOD_SECONDS);
+    private final DescriptiveStatistics ackStats = new SynchronizedDescriptiveStatistics(COLLECTION_PERIOD_SECONDS);
     private final DescriptiveStatistics bytesStats = new SynchronizedDescriptiveStatistics(COLLECTION_PERIOD_SECONDS);
     private final AtomicBoolean isShutdown = new AtomicBoolean(true);
     private final ScheduledExecutorService scheduler;
@@ -30,8 +32,13 @@ public class NettyHelixIPCStats implements NettyHelixIPCStatsMBean {
     }
 
     @Override
-    public long getMessageCount() {
-        return messageCount.get();
+    public long getSendCount() {
+        return sendCount.get();
+    }
+
+    @Override
+    public long getAckCount() {
+        return ackCount.get();
     }
 
     @Override
@@ -50,8 +57,13 @@ public class NettyHelixIPCStats implements NettyHelixIPCStatsMBean {
     }
 
     @Override
-    public double getMessagesPerSecond() {
-        return messageStats.getSum() / COLLECTION_PERIOD_SECONDS;
+    public double getSendsPerSecond() {
+        return sendStats.getSum() / COLLECTION_PERIOD_SECONDS;
+    }
+
+    @Override
+    public double getAcksPerSecond() {
+        return ackStats.getSum() / COLLECTION_PERIOD_SECONDS;
     }
 
     @Override
@@ -59,8 +71,12 @@ public class NettyHelixIPCStats implements NettyHelixIPCStatsMBean {
         return bytesStats.getSum() / COLLECTION_PERIOD_SECONDS;
     }
 
-    public void countMessage() {
-        messageCount.incrementAndGet();
+    public void countSend() {
+        sendCount.incrementAndGet();
+    }
+
+    public void countAck() {
+        ackCount.incrementAndGet();
     }
 
     public void countBytes(long numBytes) {
@@ -80,7 +96,8 @@ public class NettyHelixIPCStats implements NettyHelixIPCStatsMBean {
             scheduledFuture = scheduler.scheduleAtFixedRate(new Runnable() {
                 @Override
                 public void run() {
-                    messageStats.addValue(messageCount.get());
+                    sendStats.addValue(sendCount.get());
+                    ackStats.addValue(ackCount.get());
                     bytesStats.addValue(bytesCount.get());
                 }
             }, 0, 1, TimeUnit.SECONDS); // collect every 1 second (fixed)
