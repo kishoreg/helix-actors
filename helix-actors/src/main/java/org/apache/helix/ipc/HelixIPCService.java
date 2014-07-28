@@ -25,12 +25,12 @@ public interface HelixIPCService {
     /**
      * Sends a message to one or more instances that map to a cluster scope.
      */
-    void send(HelixMessageScope scope, Set<HelixAddress> destinations, int messageType, UUID messageId, Object message);
+    void send(Set<HelixAddress> destinations, int messageType, UUID messageId, Object message);
 
     /**
      * Sends an acknowledgement to the original sender for a given message ID
      */
-    void ack(HelixMessageScope scope, HelixAddress source, UUID messageId);
+    void ack(HelixAddress source, UUID messageId);
 
     /** Registers a callback for a given message type */
     void registerCallback(int messageType, HelixIPCCallback callback);

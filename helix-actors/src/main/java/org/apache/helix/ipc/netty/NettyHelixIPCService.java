@@ -167,8 +167,7 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
      * Sends a message to all partitions with a given state in the cluster.
      */
     @Override
-    public void send(HelixMessageScope scope,
-                     Set<HelixAddress> destinations,
+    public void send(Set<HelixAddress> destinations,
                      int messageType,
                      UUID messageId,
                      Object message) {
@@ -180,8 +179,8 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
 
         // Encode message
         ByteBuf messageByteBuf = codec.encode(message);
-        byte[] clusterBytes = scope.getCluster() == null ?
-                EMPTY_BYTES : scope.getCluster().getBytes();
+//        byte[] clusterBytes = scope.getCluster() == null ?
+//                EMPTY_BYTES : scope.getCluster().getBytes();
 
         // Send message(s)
         for (HelixAddress destination : destinations) {
@@ -198,6 +197,9 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                 }
 
                 // Get metadata bytes
+                HelixMessageScope scope = destination.getScope();
+                byte[] clusterBytes = scope.getCluster() == null ?
+                        EMPTY_BYTES : scope.getCluster().getBytes();
                 byte[] resourceBytes = scope.getResource() == null
                         ? EMPTY_BYTES : scope.getResource().getBytes();
                 byte[] partitionBytes = scope.getPartition() == null
@@ -256,13 +258,13 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                 stats.countSend();
             } catch (Exception e) {
                 stats.countError();
-                throw new IllegalStateException("Could not send message to " + scope, e);
+                throw new IllegalStateException("Could not send message to " + destination, e);
             }
         }
     }
 
     @Override
-    public void ack(HelixMessageScope scope, HelixAddress source, UUID messageId) {
+    public void ack(HelixAddress source, UUID messageId) {
         // Compute message length
         int totalLength = NUM_LENGTH_FIELDS * (Integer.SIZE / 8)
                 + (Integer.SIZE / 8) * 2 // version, type

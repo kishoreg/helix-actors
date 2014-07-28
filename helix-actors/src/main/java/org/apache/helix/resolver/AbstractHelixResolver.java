@@ -144,6 +144,7 @@ public abstract class AbstractHelixResolver implements HelixResolver {
             + participant.getInstanceName() + ", skipping");
       } else {
         result.add(new HelixAddress(
+                scope,
                 participant.getInstanceName(),
                 new InetSocketAddress(participant.getHostName(), Integer.valueOf(ipcPort))));
       }
@@ -177,6 +178,7 @@ public abstract class AbstractHelixResolver implements HelixResolver {
                         "No IPC address registered for source instance " + scope.getSourceInstance());
             }
             return new HelixAddress(
+                    scope,
                     scope.getSourceInstance(),
                     new InetSocketAddress(config.getHostName(), Integer.valueOf(ipcPort)));
         }

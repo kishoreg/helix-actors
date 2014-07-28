@@ -175,7 +175,7 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
 
                 Set<HelixAddress> destinations = firstResolver.getDestinations(scope);
 
-                firstIPC.send(scope, destinations, messageType, UUID.randomUUID(), "Hello world " + i);
+                firstIPC.send(destinations, messageType, UUID.randomUUID(), "Hello world " + i);
             }
         }
 
@@ -191,7 +191,7 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
 
                 Set<HelixAddress> destinations = secondResolver.getDestinations(scope);
 
-                secondIPC.send(scope, destinations, messageType, UUID.randomUUID(), "Hello world " + i);
+                secondIPC.send(destinations, messageType, UUID.randomUUID(), "Hello world " + i);
             }
         }
 
