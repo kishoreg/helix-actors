@@ -19,6 +19,8 @@ package org.apache.helix.resolver;
  * under the License.
  */
 
+import java.util.Set;
+
 /**
  * An interface that resolves a message scope to a direct address.
  */
@@ -39,13 +41,7 @@ public interface HelixResolver {
    */
   boolean isConnected();
 
-  /**
-   * Resolve a scope.
-   *
-   * <p>
-   *     After this is called, {@link HelixMessageScope#getDestinationAddresses()} for the provided scope
-   *     will return a non-null value.
-   * </p>
-   */
-  void resolve(HelixMessageScope scope);
+  Set<HelixAddress> getDestinations(HelixMessageScope scope);
+
+  HelixAddress getSource(HelixMessageScope scope);
 }

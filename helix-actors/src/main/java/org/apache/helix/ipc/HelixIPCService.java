@@ -1,9 +1,9 @@
 package org.apache.helix.ipc;
 
+import org.apache.helix.resolver.HelixAddress;
 import org.apache.helix.resolver.HelixMessageScope;
 
-import java.net.InetSocketAddress;
-import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -24,27 +24,13 @@ public interface HelixIPCService {
 
     /**
      * Sends a message to one or more instances that map to a cluster scope.
-     *
-     * @param scope
-     *  A scope which has already been resolved using {@link org.apache.helix.resolver.HelixResolver#resolve}
-     * @param messageType
-     *  The message type identifier, used in mapping callbacks / codecs
-     * @param messageId
-     *  A unique message identifier (which can be used in potential response messages)
-     * @param message
-     *  A typed message, for which there must be a registered message codec
      */
-    void send(HelixMessageScope scope, int messageType, UUID messageId, Object message);
+    void send(HelixMessageScope scope, Set<HelixAddress> destinations, int messageType, UUID messageId, Object message);
 
     /**
      * Sends an acknowledgement to the original sender for a given message ID
-     *
-     * @param scope
-     *  A scope which has already been resolved using {@link org.apache.helix.resolver.HelixResolver#resolve}
-     * @param messageId
-     *  The ID of the original message to be acknowledged
      */
-    void ack(HelixMessageScope scope, UUID messageId);
+    void ack(HelixMessageScope scope, HelixAddress source, UUID messageId);
 
     /** Registers a callback for a given message type */
     void registerCallback(int messageType, HelixIPCCallback callback);

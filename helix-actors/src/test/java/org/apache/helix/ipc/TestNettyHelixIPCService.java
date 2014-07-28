@@ -6,6 +6,7 @@ import org.apache.helix.*;
 import org.apache.helix.ipc.netty.NettyHelixIPCService;
 import org.apache.helix.model.HelixConfigScope;
 import org.apache.helix.model.builder.HelixConfigScopeBuilder;
+import org.apache.helix.resolver.HelixAddress;
 import org.apache.helix.resolver.HelixMessageScope;
 import org.apache.helix.resolver.HelixResolver;
 import org.apache.helix.resolver.zk.ZKHelixResolver;
@@ -172,9 +173,9 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
                         .state("ONLINE")
                         .build();
 
-                firstResolver.resolve(scope);
+                Set<HelixAddress> destinations = firstResolver.getDestinations(scope);
 
-                firstIPC.send(scope, messageType, UUID.randomUUID(), "Hello world " + i);
+                firstIPC.send(scope, destinations, messageType, UUID.randomUUID(), "Hello world " + i);
             }
         }
 
@@ -188,9 +189,9 @@ public class TestNettyHelixIPCService extends ZkUnitTestBase {
                         .state("ONLINE")
                         .build();
 
-                secondResolver.resolve(scope);
+                Set<HelixAddress> destinations = secondResolver.getDestinations(scope);
 
-                secondIPC.send(scope, messageType, UUID.randomUUID(), "Hello world " + i);
+                secondIPC.send(scope, destinations, messageType, UUID.randomUUID(), "Hello world " + i);
             }
         }
 

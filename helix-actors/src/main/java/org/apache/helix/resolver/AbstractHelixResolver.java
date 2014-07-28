@@ -73,13 +73,13 @@ public abstract class AbstractHelixResolver implements HelixResolver {
   }
 
   @Override
-  public void resolve(HelixMessageScope scope) {
+  public Set<HelixAddress> getDestinations(HelixMessageScope scope) {
     if (!scope.isValid()) {
       LOG.error("Scope " + scope + " is not valid!");
-      scope.setDestinationAddresses(new HashMap<String, InetSocketAddress>());
+      return new HashSet<HelixAddress>();
     } else if (!_isConnected) {
       LOG.error("Cannot resolve " + scope + " without first connecting!");
-      scope.setDestinationAddresses(new HashMap<String, InetSocketAddress>());
+      return new HashSet<HelixAddress>();
     }
 
     // Connect or refresh connection
@@ -136,30 +136,53 @@ public abstract class AbstractHelixResolver implements HelixResolver {
     }
 
     // Resolve those participants
-    Map<String, InetSocketAddress> result = Maps.newHashMap();
+    Set<HelixAddress> result = new HashSet<HelixAddress>();
     for (InstanceConfig participant : participants) {
       String ipcPort = participant.getRecord().getSimpleField(IPC_PORT);
       if (ipcPort == null) {
         LOG.error("No ipc address registered for target instance "
             + participant.getInstanceName() + ", skipping");
       } else {
-        result.put(participant.getInstanceName(), new InetSocketAddress(participant.getHostName(), Integer.valueOf(ipcPort)));
+        result.add(new HelixAddress(
+                participant.getInstanceName(),
+                new InetSocketAddress(participant.getHostName(), Integer.valueOf(ipcPort))));
       }
     }
 
-    // Get source instance
-    if (scope.getSrcInstance() != null) {
-      InstanceConfig config = routingTable.getInstanceConfig(scope.getSrcInstance());
-      String ipcPort = config.getRecord().getSimpleField(IPC_PORT);
-      if (ipcPort == null) {
-        LOG.error("No ipc address registered for source instance " + scope.getSrcInstance());
-      } else {
-        scope.setSourceAddress(new InetSocketAddress(config.getHostName(), Integer.valueOf(ipcPort)));
-      }
-    }
-
-    scope.setDestinationAddresses(result);
+    return result;
   }
+
+    @Override
+    public HelixAddress getSource(HelixMessageScope scope) {
+        // Connect or refresh connection
+        String cluster = scope.getCluster();
+        ResolverRoutingTable routingTable;
+        synchronized (_connections) {
+            Spectator connection;
+            if (_connections.containsKey(cluster)) {
+                connection = _connections.get(cluster);
+            } else {
+                connection = new Spectator(cluster, DEFAULT_LEASE_LENGTH_MS);
+                connection.init();
+                _connections.put(cluster, connection);
+            }
+            routingTable = connection.getRoutingTable();
+        }
+
+        if (scope.getSourceInstance() != null) {
+            InstanceConfig config = routingTable.getInstanceConfig(scope.getSourceInstance());
+            String ipcPort = config.getRecord().getSimpleField(IPC_PORT);
+            if (ipcPort == null) {
+                throw new IllegalStateException(
+                        "No IPC address registered for source instance " + scope.getSourceInstance());
+            }
+            return new HelixAddress(
+                    scope.getSourceInstance(),
+                    new InetSocketAddress(config.getHostName(), Integer.valueOf(ipcPort)));
+        }
+
+        return null;
+    }
 
   @Override
   public boolean isConnected() {

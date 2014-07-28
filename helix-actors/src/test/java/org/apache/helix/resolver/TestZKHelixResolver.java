@@ -37,6 +37,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.net.InetSocketAddress;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -98,23 +99,31 @@ public class TestZKHelixResolver extends ZkUnitTestBase {
   @Test
   public void testResolution() {
     HelixMessageScope clusterScope = new HelixMessageScope.Builder().cluster(CLUSTER_NAME).build();
-    _resolver.resolve(clusterScope);
-    Assert.assertNotNull(clusterScope.getDestinationAddresses());
-    Assert.assertTrue(clusterScope.getDestinationAddresses().values().containsAll(_socketMap.values()), "Expected "
-        + _socketMap.values() + ", found " + clusterScope.getDestinationAddresses());
+    Set<HelixAddress> destinations = _resolver.getDestinations(clusterScope);
+    Assert.assertNotNull(destinations);
+    Set<InetSocketAddress> addresses = new HashSet<InetSocketAddress>();
+    for (HelixAddress destination : destinations) {
+        addresses.add(destination.getSocketAddress());
+    }
+    Assert.assertTrue(addresses.containsAll(_socketMap.values()), "Expected "
+        + _socketMap.values() + ", found " + addresses);
 
     HelixMessageScope resourceScope =
         new HelixMessageScope.Builder().cluster(CLUSTER_NAME).resource(RESOURCE_NAME).build();
-    _resolver.resolve(resourceScope);
-    Assert.assertNotNull(resourceScope.getDestinationAddresses());
-    Assert.assertTrue(resourceScope.getDestinationAddresses().values().containsAll(_socketMap.values()), "Expected "
-        + _socketMap.values() + ", found " + resourceScope.getDestinationAddresses());
+    destinations = _resolver.getDestinations(resourceScope);
+    Assert.assertNotNull(destinations);
+    addresses.clear();
+    for (HelixAddress destination : destinations) {
+        addresses.add(destination.getSocketAddress());
+    }
+    Assert.assertTrue(addresses.containsAll(_socketMap.values()), "Expected "
+        + _socketMap.values() + ", found " + addresses);
 
     HelixMessageScope partition0Scope =
         new HelixMessageScope.Builder().cluster(CLUSTER_NAME).resource(RESOURCE_NAME)
             .partition(RESOURCE_NAME + "_0").build();
-    _resolver.resolve(partition0Scope);
-    Assert.assertNotNull(partition0Scope.getDestinationAddresses());
+    destinations = _resolver.getDestinations(partition0Scope);
+    Assert.assertNotNull(destinations);
     ExternalView externalView =
         _setupTool.getClusterManagementTool().getResourceExternalView(CLUSTER_NAME, RESOURCE_NAME);
     Set<String> instanceSet = externalView.getStateMap(RESOURCE_NAME + "_0").keySet();
@@ -122,8 +131,12 @@ public class TestZKHelixResolver extends ZkUnitTestBase {
     for (String instanceName : instanceSet) {
       expectedSocketAddrs.add(_socketMap.get(instanceName));
     }
-    Assert.assertEquals(partition0Scope.getDestinationAddresses().values(), expectedSocketAddrs,
-            "Expected " + expectedSocketAddrs + ", found " + partition0Scope.getDestinationAddresses().values());
+    addresses.clear();
+    for (HelixAddress destination : destinations) {
+        addresses.add(destination.getSocketAddress());
+    }
+    Assert.assertEquals(addresses, expectedSocketAddrs,
+            "Expected " + expectedSocketAddrs + ", found " + addresses);
 
     HelixMessageScope sourceInstanceScope = new HelixMessageScope.Builder()
             .cluster(CLUSTER_NAME)
@@ -131,9 +144,9 @@ public class TestZKHelixResolver extends ZkUnitTestBase {
             .partition(RESOURCE_NAME + "_0")
             .sourceInstance(_participants[0].getInstanceName())
             .build();
-    _resolver.resolve(sourceInstanceScope);
-    Assert.assertNotNull(sourceInstanceScope.getSourceAddress());
-    Assert.assertEquals(sourceInstanceScope.getSourceAddress(), _socketMap.get(_participants[0].getInstanceName()));
+    HelixAddress sourceAddress = _resolver.getSource(sourceInstanceScope);
+    Assert.assertNotNull(sourceAddress);
+    Assert.assertEquals(sourceAddress.getSocketAddress(), _socketMap.get(_participants[0].getInstanceName()));
   }
 
   @AfterClass

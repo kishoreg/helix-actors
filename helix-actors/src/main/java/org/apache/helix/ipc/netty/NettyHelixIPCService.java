@@ -21,13 +21,14 @@ import org.apache.helix.ipc.AbstractHelixIPCService;
 import org.apache.helix.ipc.HelixIPCConstants;
 import org.apache.helix.ipc.HelixIPCMessageCodec;
 import org.apache.helix.ipc.HelixIPCService;
+import org.apache.helix.resolver.HelixAddress;
 import org.apache.helix.resolver.HelixMessageScope;
 import org.apache.log4j.Logger;
 
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
-import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -167,6 +168,7 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
      */
     @Override
     public void send(HelixMessageScope scope,
+                     Set<HelixAddress> destinations,
                      int messageType,
                      UUID messageId,
                      Object message) {
@@ -182,18 +184,15 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                 EMPTY_BYTES : scope.getCluster().getBytes();
 
         // Send message(s)
-        if (scope.getDestinationAddresses() == null) {
-            throw new IllegalArgumentException("Cannot send message to unresolved scope");
-        }
-        for (Map.Entry<String, InetSocketAddress> entry : scope.getDestinationAddresses().entrySet()) {
+        for (HelixAddress destination : destinations) {
             try {
                 // Get a channel (lazily connect)
                 Channel channel = null;
                 synchronized (channels) {
-                    channel = channels.get(entry.getValue());
+                    channel = channels.get(destination.getSocketAddress());
                     if (channel == null || !channel.isOpen()) {
-                        channel = clientBootstrap.connect(entry.getValue()).sync().channel();
-                        channels.put(entry.getValue(), channel);
+                        channel = clientBootstrap.connect(destination.getSocketAddress()).sync().channel();
+                        channels.put(destination.getSocketAddress(), channel);
                         stats.countChannelOpen();
                     }
                 }
@@ -206,7 +205,7 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
                 byte[] stateBytes = scope.getState() == null
                         ? EMPTY_BYTES : scope.getState().getBytes();
                 byte[] srcInstanceBytes = instanceName.getBytes();
-                byte[] dstInstanceBytes = entry.getKey().getBytes();
+                byte[] dstInstanceBytes = destination.getInstanceName().getBytes();
 
                 // Compute total length
                 int totalLength = NUM_LENGTH_FIELDS * (Integer.SIZE / 8)
@@ -263,11 +262,7 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
     }
 
     @Override
-    public void ack(HelixMessageScope scope, UUID messageId) {
-        if (scope.getSourceAddress() == null) {
-            throw new IllegalArgumentException("Cannot ack message to unresolved scope");
-        }
-
+    public void ack(HelixMessageScope scope, HelixAddress source, UUID messageId) {
         // Compute message length
         int totalLength = NUM_LENGTH_FIELDS * (Integer.SIZE / 8)
                 + (Integer.SIZE / 8) * 2 // version, type
@@ -291,10 +286,10 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
         try {
             // Get a channel (lazily connect)
             synchronized (channels) {
-                channel = channels.get(scope.getSourceAddress());
+                channel = channels.get(source.getSocketAddress());
                 if (channel == null || !channel.isOpen()) {
-                    channel = clientBootstrap.connect(scope.getSourceAddress()).sync().channel();
-                    channels.put(scope.getSourceAddress(), channel);
+                    channel = clientBootstrap.connect(source.getSocketAddress()).sync().channel();
+                    channels.put(source.getSocketAddress(), channel);
                     stats.countChannelOpen();
                 }
             }
@@ -308,7 +303,7 @@ public class NettyHelixIPCService extends AbstractHelixIPCService {
             stats.countBytes(totalLength);
             stats.countAck();
         } catch (InterruptedException e) {
-            throw new IllegalStateException("Could not send ack to " + scope.getSourceAddress(), e);
+            throw new IllegalStateException("Could not send ack to " + source.getSocketAddress(), e);
         }
 
     }
